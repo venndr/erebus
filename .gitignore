@@ -25,3 +25,4 @@ erebus-*.tar
 
 # Temporary files for e.g. tests
 /tmp
+.envrc
