@@ -4,6 +4,20 @@ defmodule Erebus.KMS do
   """
   alias GoogleApi.CloudKMS.V1.Api.Projects, as: CloudKMSApi
 
+  def get_public_key() do
+    {:ok, %{pem: public_key}} =
+      CloudKMSApi.cloudkms_projects_locations_key_rings_crypto_keys_crypto_key_versions_get_public_key(
+        connection(),
+        System.fetch_env!("GOOGLE_PROJECT"),
+        System.fetch_env!("GOOGLE_REGION"),
+        System.fetch_env!("GOOGLE_KEYRING"),
+        System.fetch_env!("GOOGLE_KEY"),
+        System.fetch_env!("GOOGLE_KEY_VERSION")
+      )
+
+    public_key
+  end
+
   def decrypt(ciphertext) do
     {:ok, %{plaintext: plaintext}} =
       CloudKMSApi.cloudkms_projects_locations_key_rings_crypto_keys_crypto_key_versions_asymmetric_decrypt(
@@ -22,8 +36,8 @@ defmodule Erebus.KMS do
   end
 
   def encrypt(plaintext) do
-    pem_bin = "PUBLIC_KEY_PATH" |> System.fetch_env!() |> File.read!()
-    public_key = :public_key.pem_decode(pem_bin) |> hd() |> :public_key.pem_entry_decode()
+    public_key =
+      get_public_key() |> :public_key.pem_decode() |> hd() |> :public_key.pem_entry_decode()
 
     :public_key.encrypt_public(plaintext, public_key,
       rsa_padding: :rsa_pkcs1_oaep_padding,
