@@ -20,6 +20,7 @@ defmodule Erebus.Application do
     source = {:service_account, credentials, scopes: scopes}
 
     children = [
+      Erebus.PublicKeyStore,
       {Goth, name: Yggdrasil.Goth, source: source}
     ]
 

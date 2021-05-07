@@ -26,11 +26,7 @@ defmodule Erebus.KMS do
   end
 
   def encrypt(dek, handle, version) do
-    public_key =
-      get_public_key(handle, version)
-      |> :public_key.pem_decode()
-      |> hd()
-      |> :public_key.pem_entry_decode()
+    public_key = Erebus.PublicKeyStore.get_key(handle, version)
 
     %Erebus.EncryptedData{
       encrypted_dek:
@@ -50,7 +46,7 @@ defmodule Erebus.KMS do
     GoogleApi.CloudKMS.V1.Connection.new(token.token)
   end
 
-  defp get_public_key(handle, version) do
+  def get_public_key(handle, version) do
     {:ok, %{pem: public_key}} =
       CloudKMSApi.cloudkms_projects_locations_key_rings_crypto_keys_crypto_key_versions_get_public_key(
         connection(),
@@ -62,5 +58,8 @@ defmodule Erebus.KMS do
       )
 
     public_key
+    |> :public_key.pem_decode()
+    |> hd()
+    |> :public_key.pem_entry_decode()
   end
 end
