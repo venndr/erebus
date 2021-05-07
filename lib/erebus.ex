@@ -9,55 +9,85 @@ defmodule Erebus do
     do: encrypt(struct, handle, Integer.to_string(version))
 
   def encrypt(struct, handle, version) do
-    dek = :crypto.strong_rand_bytes(32) |> Base.encode64()
+    struct =
+      if is_nil(struct.data.dek) do
+        struct
+      else
+        Map.put(
+          struct,
+          :data,
+          decrypt(struct.data, Erebus.Encryption.encrypted_fields(struct.data))
+        )
+      end
 
-    encrypted_dek = Erebus.KMS.encrypt(dek, handle, version)
+    if struct.changes
+       |> Map.keys()
+       |> MapSet.new()
+       |> MapSet.intersection(MapSet.new(Erebus.Encryption.encrypted_fields(struct.data)))
+       |> Enum.empty?() do
+      %{}
+    else
+      dek = :crypto.strong_rand_bytes(32) |> Base.encode64()
 
-    encrypted_data =
-      struct.data
-      |> Erebus.Encryption.encrypted_fields()
-      |> Enum.map(fn field ->
-        aead = :crypto.strong_rand_bytes(16)
-        iv = :crypto.strong_rand_bytes(16)
+      encrypted_dek = Erebus.KMS.encrypt(dek, handle, version)
 
-        stringified = Atom.to_string(field)
+      encrypted_data =
+        struct.data
+        |> Erebus.Encryption.encrypted_fields()
+        |> Enum.map(fn
+          nil ->
+            nil
 
-        data_to_encrypt = struct.changes |> Map.get(field, Map.get(struct.data, field))
+          field ->
+            aead = :crypto.strong_rand_bytes(16)
+            iv = :crypto.strong_rand_bytes(16)
 
-        {ciphertext, ciphertag} =
-          :crypto.crypto_one_time_aead(
-            @cipher,
-            dek |> Base.decode64!(),
-            iv,
-            data_to_encrypt,
-            aead,
-            16,
-            true
-          )
+            stringified = Atom.to_string(field)
 
-        [
-          {
-            String.to_atom(stringified <> "_encrypted"),
-            Base.encode64(
-              iv <>
-                aead <>
-                ciphertag <>
-                ciphertext
-            )
-          },
-          {
-            String.to_atom(stringified <> "_hash"),
-            :crypto.hash(:sha512, data_to_encrypt) |> Base.encode64()
-          }
-        ]
-      end)
-      |> List.flatten()
-      |> Enum.into(%{})
-      |> IO.inspect()
+            data_to_encrypt = struct.changes |> Map.get(field) || Map.get(struct.data, field)
 
-    Map.merge(encrypted_data, %{
-      dek: encrypted_dek
-    })
+            # data_to_encrypt =
+            #   if is_nil(data_to_encrypt) do
+            #     Map.get(struct.data, String.to_atom(stringified <> "_encrypted"))
+            #   else
+            #     data_to_encrypt
+            #   end
+
+            {ciphertext, ciphertag} =
+              :crypto.crypto_one_time_aead(
+                @cipher,
+                dek |> Base.decode64!(),
+                iv,
+                data_to_encrypt,
+                aead,
+                16,
+                true
+              )
+
+            [
+              {
+                String.to_atom(stringified <> "_encrypted"),
+                Base.encode64(
+                  iv <>
+                    aead <>
+                    ciphertag <>
+                    ciphertext
+                )
+              },
+              {
+                String.to_atom(stringified <> "_hash"),
+                :crypto.hash(:sha512, data_to_encrypt) |> Base.encode64()
+              }
+            ]
+        end)
+        |> Enum.filter(& &1)
+        |> List.flatten()
+        |> Enum.into(%{})
+
+      Map.merge(encrypted_data, %{
+        dek: encrypted_dek
+      })
+    end
   end
 
   def decrypt(struct, fields_to_decrypt) do

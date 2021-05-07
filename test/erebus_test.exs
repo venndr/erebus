@@ -3,8 +3,6 @@ defmodule ErebusTest do
   doctest Erebus
 
   defmodule EncryptedStuff do
-    # use Erebus.Encryption, fields: [:first, :second]
-
     use Ecto.Schema
     import Ecto.Changeset
 
@@ -14,6 +12,7 @@ defmodule ErebusTest do
       field(:second_encrypted, :map)
       field(:second_hash, :string)
       field(:dek, :map)
+      field(:other, :string)
 
       field(:first, :string, virtual: true)
       field(:second, :string, virtual: true)
@@ -46,13 +45,37 @@ defmodule ErebusTest do
       |> Ecto.Changeset.apply_changes()
       # simulate reloading with virtual fields emptied
       |> Map.merge(%{first: nil, second: nil})
-      |> IO.inspect(label: "applied")
-      |> IO.inspect(label: "Encrypted model")
 
-    decrypted_first =
-      encrypted |> Erebus.decrypt([:first]) |> IO.inspect(label: "first decrypted")
+    decrypted_first = encrypted |> Erebus.decrypt([:first])
 
-    decrypted_second =
-      decrypted_first |> Erebus.decrypt([:second]) |> IO.inspect(label: "second decrypted")
+    assert "hello" == decrypted_first.first
+    assert nil == decrypted_first.second
+
+    decrypted_second = decrypted_first |> Erebus.decrypt([:second])
+
+    assert "hello" == decrypted_second.first
+    assert "there" == decrypted_second.second
+
+    # reencryption
+    hash_before = encrypted.first_encrypted
+    dek_before = encrypted.dek
+
+    encrypted_2 =
+      encrypted
+      |> EncryptedStuff.changeset(%{second: "thereX"})
+      |> Ecto.Changeset.apply_changes()
+
+    assert hash_before != encrypted_2.first_encrypted
+    assert dek_before != encrypted_2.dek
+
+    # when changing other fields it shouldnt reencrypt
+
+    encrypted_3 =
+      encrypted
+      |> EncryptedStuff.changeset(%{other: "somestring"})
+      |> Ecto.Changeset.apply_changes()
+
+    assert hash_before == encrypted_3.first_encrypted
+    assert dek_before == encrypted_3.dek
   end
 end
