@@ -9,17 +9,6 @@ defmodule Erebus do
     do: encrypt(struct, handle, Integer.to_string(version))
 
   def encrypt(struct, handle, version) do
-    struct =
-      if is_nil(struct.data.dek) do
-        struct
-      else
-        Map.put(
-          struct,
-          :data,
-          decrypt(struct.data, Erebus.Encryption.encrypted_fields(struct.data))
-        )
-      end
-
     if struct.changes
        |> Map.keys()
        |> MapSet.new()
@@ -27,6 +16,17 @@ defmodule Erebus do
        |> Enum.empty?() do
       %{}
     else
+      struct =
+        if is_nil(struct.data.dek) do
+          struct
+        else
+          Map.put(
+            struct,
+            :data,
+            decrypt(struct.data, Erebus.Encryption.encrypted_fields(struct.data))
+          )
+        end
+
       dek = :crypto.strong_rand_bytes(32) |> Base.encode64()
 
       encrypted_dek = Erebus.KMS.encrypt(dek, handle, version)
@@ -45,13 +45,6 @@ defmodule Erebus do
             stringified = Atom.to_string(field)
 
             data_to_encrypt = struct.changes |> Map.get(field) || Map.get(struct.data, field)
-
-            # data_to_encrypt =
-            #   if is_nil(data_to_encrypt) do
-            #     Map.get(struct.data, String.to_atom(stringified <> "_encrypted"))
-            #   else
-            #     data_to_encrypt
-            #   end
 
             {ciphertext, ciphertag} =
               :crypto.crypto_one_time_aead(

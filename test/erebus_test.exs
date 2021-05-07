@@ -46,6 +46,12 @@ defmodule ErebusTest do
       # simulate reloading with virtual fields emptied
       |> Map.merge(%{first: nil, second: nil})
 
+    assert !is_nil(encrypted.dek)
+    assert !is_nil(encrypted.first_hash)
+    assert !is_nil(encrypted.first_encrypted)
+
+    assert encrypted.first_hash == :crypto.hash(:sha512, "hello") |> Base.encode64()
+
     decrypted_first = encrypted |> Erebus.decrypt([:first])
 
     assert "hello" == decrypted_first.first
