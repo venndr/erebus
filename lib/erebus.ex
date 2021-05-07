@@ -13,53 +13,80 @@ defmodule Erebus do
 
     encrypted_dek = Erebus.KMS.encrypt(dek, handle, version)
 
-    aead = :crypto.strong_rand_bytes(16)
-    iv = :crypto.strong_rand_bytes(16)
+    encrypted_data =
+      struct.data
+      |> Erebus.Encryption.encrypted_fields()
+      |> Enum.map(fn field ->
+        aead = :crypto.strong_rand_bytes(16)
+        iv = :crypto.strong_rand_bytes(16)
 
-    {ciphertext, ciphertag} =
-      :crypto.crypto_one_time_aead(@cipher, dek |> Base.decode64!(), iv, struct, aead, 16, true)
+        stringified = Atom.to_string(field)
 
-    dek = nil
-    :erlang.garbage_collect(self())
-    # force removing of unencrypted dek from memory
+        data_to_encrypt = struct.changes |> Map.get(field, Map.get(struct.data, field))
 
-    Map.put(
-      encrypted_dek,
-      :ciphertext,
-      Base.encode64(
-        iv <>
-          aead <>
-          ciphertag <>
-          ciphertext
-      )
-    )
+        {ciphertext, ciphertag} =
+          :crypto.crypto_one_time_aead(
+            @cipher,
+            dek |> Base.decode64!(),
+            iv,
+            data_to_encrypt,
+            aead,
+            16,
+            true
+          )
+
+        [
+          {
+            String.to_atom(stringified <> "_encrypted"),
+            Base.encode64(
+              iv <>
+                aead <>
+                ciphertag <>
+                ciphertext
+            )
+          },
+          {
+            String.to_atom(stringified <> "_hash"),
+            :crypto.hash(:sha512, data_to_encrypt) |> Base.encode64()
+          }
+        ]
+      end)
+      |> List.flatten()
+      |> Enum.into(%{})
+      |> IO.inspect()
+
+    Map.merge(encrypted_data, %{
+      dek: encrypted_dek
+    })
   end
 
-  def decrypt(
-        %Erebus.EncryptedData{
-          ciphertext: ciphertext_base64
-        } = encrypted_data
-      ) do
-    decrypted_dek = Erebus.KMS.decrypt(encrypted_data)
+  def decrypt(struct, fields_to_decrypt) do
+    encrypted_dek = struct.dek |> Erebus.EncryptedData.cast_if_needed()
 
-    <<iv::binary-16, aead::binary-16, ciphertag::binary-16, ciphertext::binary>> =
-      Base.decode64!(ciphertext_base64)
+    decrypted_dek = Erebus.KMS.decrypt(encrypted_dek) |> Base.decode64!()
 
-    decrypted_data =
-      :crypto.crypto_one_time_aead(
-        @cipher,
-        decrypted_dek |> Base.decode64!(),
-        iv,
-        ciphertext,
-        aead,
-        ciphertag,
-        false
-      )
+    decrypted_fields =
+      Enum.map(fields_to_decrypt, fn field ->
+        stringified_field = Atom.to_string(field)
 
-    decrypted_dek = nil
-    :erlang.garbage_collect(self())
-    # force removing of unencrypted dek from memory
+        encrypted_field = Map.get(struct, String.to_atom(stringified_field <> "_encrypted"))
 
-    decrypted_data
+        <<iv::binary-16, aead::binary-16, ciphertag::binary-16, ciphertext::binary>> =
+          Base.decode64!(encrypted_field)
+
+        {field,
+         :crypto.crypto_one_time_aead(
+           @cipher,
+           decrypted_dek,
+           iv,
+           ciphertext,
+           aead,
+           ciphertag,
+           false
+         )}
+      end)
+      |> Enum.into(%{})
+
+    Map.merge(struct, decrypted_fields)
   end
 end
