@@ -42,8 +42,7 @@ defmodule Erebus.GoogleTest do
   end
 
   test "get_public_key" do
-    public_key =
-      File.read!("/Users/esse/src/venndr/erebus/test/fixtures/keys/handle/1/public.pem")
+    public_key = read_fixture(["handle", "1", "public.pem"])
 
     with_mocks [
       {GoogleApi.CloudKMS.V1.Api.Projects, [],
@@ -83,4 +82,12 @@ defmodule Erebus.GoogleTest do
       assert "version" == encrypted_data.version
     end
   end
+
+  defp read_fixture(path_segments),
+    do:
+      [__ENV__.file, "..", "..", "fixtures", "keys"]
+      |> Kernel.++(path_segments)
+      |> Path.join()
+      |> Path.expand()
+      |> File.read!()
 end

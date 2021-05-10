@@ -38,7 +38,7 @@ defmodule Erebus.LocalTest do
         changes
         |> Erebus.encrypt("handle", 1,
           kms_backend: Erebus.KMS.Local,
-          keys_base_path: "/Users/esse/src/venndr/erebus/test/fixtures/keys",
+          keys_base_path: Erebus.LocalTest.fixture_path(),
           private_key_password: "1234"
         )
 
@@ -70,7 +70,7 @@ defmodule Erebus.LocalTest do
       encrypted
       |> Erebus.decrypt([:first],
         kms_backend: Erebus.KMS.Local,
-        keys_base_path: "/Users/esse/src/venndr/erebus/test/fixtures/keys",
+        keys_base_path: fixture_path(),
         private_key_password: "1234"
       )
 
@@ -81,7 +81,7 @@ defmodule Erebus.LocalTest do
       decrypted_first
       |> Erebus.decrypt([:second],
         kms_backend: Erebus.KMS.Local,
-        keys_base_path: "/Users/esse/src/venndr/erebus/test/fixtures/keys",
+        keys_base_path: fixture_path(),
         private_key_password: "1234"
       )
 
@@ -110,4 +110,7 @@ defmodule Erebus.LocalTest do
     assert hash_before == encrypted_3.first_encrypted
     assert dek_before == encrypted_3.dek
   end
+
+  def fixture_path(),
+    do: [__ENV__.file, "..", "..", "fixtures", "keys"] |> Path.join() |> Path.expand()
 end
