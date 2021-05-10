@@ -49,6 +49,8 @@ defmodule Erebus do
       |> MapSet.intersection(MapSet.new(Erebus.Encryption.encrypted_fields(data)))
       |> Enum.empty?()
 
+  defp not_changing_encrypted_fields?(_), do: false
+
   defp force_decrypt(%{data: %{dek: dek} = data} = struct) when not is_nil(dek),
     do: %{struct | data: decrypt(data, Erebus.Encryption.encrypted_fields(data))}
 

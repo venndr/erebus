@@ -163,3 +163,5 @@ defmodule EncryptedStuff do
 ```
 
 If you don't need multiple encryption keys, provide at hard-coded in `MyApp.Erebus`.
+
+Currently we support only encoding / decoding data using Ecto changeset.

@@ -46,7 +46,7 @@ defmodule Erebus.Test do
     end
   end
 
-  test "encrypting and decrypting data" do
+  test "encrypting and decrypting data with ecto" do
     model = %EncryptedStuff{}
 
     encrypted =
