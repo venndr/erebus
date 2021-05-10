@@ -39,7 +39,7 @@ defmodule Erebus.KMS.Local do
 
   @impl true
   def get_public_key(handle, version, opts) do
-    base_path = Keyword.get(opts, :keys_base_path)
+    base_path = Keyword.fetch!(opts, :keys_base_path)
 
     base_path
     |> Path.join(handle)
@@ -52,8 +52,8 @@ defmodule Erebus.KMS.Local do
   end
 
   def get_private_key(handle, version, opts) do
-    base_path = Keyword.get(opts, :keys_base_path)
-    password = Keyword.get(opts, :private_key_password) |> to_charlist()
+    base_path = Keyword.fetch!(opts, :keys_base_path)
+    password = Keyword.fetch!(opts, :private_key_password) |> to_charlist()
 
     base_path
     |> Path.join(handle)
@@ -65,8 +65,3 @@ defmodule Erebus.KMS.Local do
     |> :public_key.pem_entry_decode(password)
   end
 end
-
-# {:RSAPrivateKey,
-#  <<229, 168, 151, 83, 223, 116, 211, 36, 87, 81, 64, 129, 245, 20, 14, 3, 83, 224, 46, 131, 90,
-#    131, 204, 180, 91, 249, 164, 227, 6, 242, 200, 92, 190, 194, 194, 33, 70, 3, 6, 57, 142, 138,
-#    31, 217, 80, 24, 176, 228, ...>>, {'DES-EDE3-CBC', <<247, 146, 176, 218, 126, 94, 156, 202>>}}

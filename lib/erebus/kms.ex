@@ -10,22 +10,22 @@ defmodule Erebus.KMS do
   @callback get_public_key(String.t(), String.t(), Keyword.t()) :: term()
 
   def decrypt(%Erebus.EncryptedData{} = data, opts) do
-    kms_backend = Keyword.get(opts, :kms_backend)
+    kms_backend = Keyword.fetch!(opts, :kms_backend)
     apply(kms_backend, :decrypt, [data, opts]) |> Base.decode64!()
   end
 
   def encrypt(dek, handle, version, opts) do
-    kms_backend = Keyword.get(opts, :kms_backend)
+    kms_backend = Keyword.fetch!(opts, :kms_backend)
     apply(kms_backend, :encrypt, [dek, handle, version, opts])
   end
 
   def get_public_key(handle, version, opts) do
-    kms_backend = Keyword.get(opts, :kms_backend)
+    kms_backend = Keyword.fetch!(opts, :kms_backend)
     apply(kms_backend, :get_public_key, [handle, version, opts])
   end
 
   def get_private_key(handle, version, opts) do
-    kms_backend = Keyword.get(opts, :kms_backend)
+    kms_backend = Keyword.fetch!(opts, :kms_backend)
 
     if function_exported?(kms_backend, :get_private_key, 3) do
       apply(kms_backend, :get_private_key, [handle, version, opts])

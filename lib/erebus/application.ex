@@ -7,21 +7,7 @@ defmodule Erebus.Application do
 
   @impl true
   def start(_type, _args) do
-    credentials =
-      "GCP_KMS_CREDENTIALS_PATH"
-      |> System.fetch_env!()
-      |> File.read!()
-      |> Jason.decode!()
-
-    # temp
-
-    scopes = ["https://www.googleapis.com/auth/cloudkms"]
-
-    source = {:service_account, credentials, scopes: scopes}
-
-    children = [
-      {Goth, name: Erebus.Goth, source: source}
-    ]
+    children = []
 
     Erebus.PublicKeyStore.init()
     Erebus.PrivateKeyStore.init()
