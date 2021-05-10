@@ -30,7 +30,7 @@ To use Erebus you need to wrap it and provide your own configuration to calls.
 
 Put following module in your app:
 
-```
+```elixir
 defmodule MyApp.Erebus do
   def encrypt(struct, handle, version) do
     opts = Application.get_env(:my_app, :erebus)
@@ -46,7 +46,7 @@ end
 
 and for encryptable fields define protocol implementation:
 
-```
+```elixir
 defimpl Erebus.Encryption do
   def encrypted_fields(_), do: [:first, :second]
 end
@@ -54,7 +54,7 @@ end
 
 and for that struct add fields named:
 
-```
+```elixir
 first
 second
 first_encrypted
@@ -66,7 +66,7 @@ dek
 
 in case of Ecto, they need to be defined as follows:
 
-```
+```elixir
 embedded_schema "table" do
   field(:first_encrypted, :map)
   field(:first_hash, :string)
@@ -81,13 +81,13 @@ end
 
 and provide following values in config:
 
-```
+```elixir
 config :my_app, :erebus, kms_backend: Erebus.KMS.Local, keys_base_path: "some_path"
 ```
 
 or, in case of using Google KMS:
 
-```
+```elixir
 config :my_app, :erebus,
   kms_backend: Erebus.KMS.Google,
   google_project: "someproject",
@@ -97,7 +97,7 @@ config :my_app, :erebus,
 
 After that, you can start using erebus!
 
-```
+```elixir
 defmodule EncryptedStuff do
     use Ecto.Schema
     import Ecto.Changeset
