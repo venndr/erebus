@@ -10,6 +10,14 @@ defmodule Erebus.KMS.Local do
         },
         opts
       ) do
+    private_key = Erebus.PrivateKeyStore.get_key(handle, version, opts)
+
+    :public_key.decrypt_private(encrypted_dek, private_key,
+      rsa_padding: :rsa_pkcs1_oaep_padding,
+      rsa_mgf1_md: :sha256,
+      rsa_oaep_md: :sha256
+    )
+    |> Base.encode64()
   end
 
   @impl true
@@ -42,4 +50,23 @@ defmodule Erebus.KMS.Local do
     |> hd()
     |> :public_key.pem_entry_decode()
   end
+
+  def get_private_key(handle, version, opts) do
+    base_path = Keyword.get(opts, :keys_base_path)
+    password = Keyword.get(opts, :private_key_password) |> to_charlist()
+
+    base_path
+    |> Path.join(handle)
+    |> Path.join(version)
+    |> Path.join("private.pem")
+    |> File.read!()
+    |> :public_key.pem_decode()
+    |> hd()
+    |> :public_key.pem_entry_decode(password)
+  end
 end
+
+# {:RSAPrivateKey,
+#  <<229, 168, 151, 83, 223, 116, 211, 36, 87, 81, 64, 129, 245, 20, 14, 3, 83, 224, 46, 131, 90,
+#    131, 204, 180, 91, 249, 164, 227, 6, 242, 200, 92, 190, 194, 194, 33, 70, 3, 6, 57, 142, 138,
+#    31, 217, 80, 24, 176, 228, ...>>, {'DES-EDE3-CBC', <<247, 146, 176, 218, 126, 94, 156, 202>>}}

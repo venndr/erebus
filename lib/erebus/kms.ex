@@ -23,4 +23,14 @@ defmodule Erebus.KMS do
     kms_backend = Keyword.get(opts, :kms_backend)
     apply(kms_backend, :get_public_key, [handle, version, opts])
   end
+
+  def get_private_key(handle, version, opts) do
+    kms_backend = Keyword.get(opts, :kms_backend)
+
+    if function_exported?(kms_backend, :get_private_key, 3) do
+      apply(kms_backend, :get_private_key, [handle, version, opts])
+    else
+      raise "Provided backend #{kms_backend} does not support fetching private key!"
+    end
+  end
 end

@@ -82,7 +82,7 @@ end
 and provide following values in config:
 
 ```elixir
-config :my_app, :erebus, kms_backend: Erebus.KMS.Local, keys_base_path: "some_path"
+config :my_app, :erebus, kms_backend: Erebus.KMS.Local, keys_base_path: "some_path", private_key_password: "1234"
 ```
 
 or, in case of using Google KMS:

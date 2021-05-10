@@ -1,10 +1,17 @@
 defmodule Erebus.SymmetricKeyStore do
+  @table :erebus_symmetric_key_store
+
   def init() do
-    :ets.new(:erebus_symmetric_key_store, [:set, :private, :named_table])
+    @table |> :ets.whereis() |> create_table_if_needed()
   end
 
+  defp create_table_if_needed(:undefined),
+    do: :ets.new(@table, [:set, :public, :named_table])
+
+  defp create_table_if_needed(_), do: nil
+
   def get_key(encrypted, opts) do
-    key = :ets.lookup(:erebus_symmetric_key_store, encrypted)
+    key = :ets.lookup(@table, encrypted)
 
     return_or_fetch(key, encrypted, opts)
   end
@@ -12,7 +19,7 @@ defmodule Erebus.SymmetricKeyStore do
   defp return_or_fetch([], encrypted, opts) do
     symmetric_key = Erebus.KMS.decrypt(encrypted, opts)
 
-    :ets.insert(:erebus_symmetric_key_store, {encrypted, symmetric_key})
+    :ets.insert(@table, {encrypted, symmetric_key})
 
     symmetric_key
   end

@@ -24,6 +24,7 @@ defmodule Erebus.Application do
     ]
 
     Erebus.PublicKeyStore.init()
+    Erebus.PrivateKeyStore.init()
     Erebus.SymmetricKeyStore.init()
 
     # See https://hexdocs.pm/elixir/Supervisor.html

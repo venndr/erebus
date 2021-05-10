@@ -1,5 +1,5 @@
-defmodule Erebus.PublicKeyStore do
-  @table :erebus_public_key_store
+defmodule Erebus.PrivateKeyStore do
+  @table :erebus_private_key_store
 
   def init() do
     @table |> :ets.whereis() |> create_table_if_needed()
@@ -17,7 +17,7 @@ defmodule Erebus.PublicKeyStore do
   end
 
   defp return_or_fetch([], handle, version, opts) do
-    public_key = Erebus.KMS.get_public_key(handle, version, opts)
+    public_key = Erebus.KMS.get_private_key(handle, version, opts)
 
     :ets.insert(@table, {calculate_key(handle, version), public_key})
 
