@@ -2,7 +2,7 @@ defmodule Erebus do
   @cipher :aes_256_gcm
 
   @moduledoc """
-  Documentation for `Erebus`.
+  This is main entry point for Erebus library.
   """
 
   def encrypt(struct, handle, version, opts) when is_integer(version),
