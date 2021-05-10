@@ -36,11 +36,7 @@ defmodule Erebus.Test do
 
       encrypted_data =
         changes
-        |> Erebus.encrypt("handle", 1,
-          kms_backend: Erebus.KMS.Local,
-          keys_base_path: "/Users/esse/src/venndr/erebus/test/fixtures/keys",
-          private_key_password: "1234"
-        )
+        |> Erebus.encrypt("handle", 1, kms_backend: Erebus.TestBackend)
 
       Ecto.Changeset.change(changes, encrypted_data)
     end
@@ -69,9 +65,7 @@ defmodule Erebus.Test do
     decrypted_first =
       encrypted
       |> Erebus.decrypt([:first],
-        kms_backend: Erebus.KMS.Local,
-        keys_base_path: "/Users/esse/src/venndr/erebus/test/fixtures/keys",
-        private_key_password: "1234"
+        kms_backend: Erebus.TestBackend
       )
 
     assert "hello" == decrypted_first.first
@@ -80,9 +74,7 @@ defmodule Erebus.Test do
     decrypted_second =
       decrypted_first
       |> Erebus.decrypt([:second],
-        kms_backend: Erebus.KMS.Local,
-        keys_base_path: "/Users/esse/src/venndr/erebus/test/fixtures/keys",
-        private_key_password: "1234"
+        kms_backend: Erebus.TestBackend
       )
 
     assert "hello" == decrypted_second.first

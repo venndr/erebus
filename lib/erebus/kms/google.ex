@@ -49,7 +49,6 @@ defmodule Erebus.KMS.Google do
     }
   end
 
-  @impl true
   def get_public_key(handle, version, opts) do
     google_project = Keyword.fetch!(opts, :google_project)
     google_region = Keyword.fetch!(opts, :google_region)

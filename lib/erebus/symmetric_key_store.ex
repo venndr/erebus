@@ -24,5 +24,5 @@ defmodule Erebus.SymmetricKeyStore do
     symmetric_key
   end
 
-  defp return_or_fetch([key | _], _handle, _version), do: key
+  defp return_or_fetch([{_, key} | _], _handle, _version), do: key
 end

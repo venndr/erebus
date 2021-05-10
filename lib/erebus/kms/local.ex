@@ -37,7 +37,6 @@ defmodule Erebus.KMS.Local do
     }
   end
 
-  @impl true
   def get_public_key(handle, version, opts) do
     base_path = Keyword.fetch!(opts, :keys_base_path)
 
