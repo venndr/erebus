@@ -5,8 +5,6 @@ defmodule Erebus do
   Documentation for `Erebus`.
   """
 
-  def encrypt(struct, handle, version, opts \\ [])
-
   def encrypt(struct, handle, version, opts) when is_integer(version),
     do: encrypt(struct, handle, Integer.to_string(version), opts)
 

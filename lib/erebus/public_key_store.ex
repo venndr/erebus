@@ -26,8 +26,5 @@ defmodule Erebus.PublicKeyStore do
 
   defp return_or_fetch([key | _], _handle, _version, _opts), do: key
 
-  defp calculate_key(handle, version) when is_integer(version),
-    do: calculate_key(handle, Integer.to_string(version))
-
   defp calculate_key(handle, version), do: handle <> "#" <> version
 end
