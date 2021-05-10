@@ -1,10 +1,10 @@
 defmodule Erebus.EncryptedData do
   @fields [:encrypted_dek, :handle, :version]
 
-  @type t :: %{
+  @type t :: %Erebus.EncryptedData{
           encrypted_dek: any(),
-          handle: String.t(),
-          version: String.t()
+          handle: binary(),
+          version: binary()
         }
 
   defstruct @fields

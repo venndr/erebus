@@ -1,4 +1,4 @@
-defmodule ErebusTest do
+defmodule Erebus.Test do
   use ExUnit.Case
   doctest Erebus
 
