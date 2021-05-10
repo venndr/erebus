@@ -24,7 +24,7 @@ defmodule Erebus.PublicKeyStore do
     public_key
   end
 
-  defp return_or_fetch([key | _], _handle, _version, _opts), do: key
+  defp return_or_fetch([{_, key} | _], _handle, _version, _opts), do: key
 
   defp calculate_key(handle, version), do: handle <> "#" <> version
 end
