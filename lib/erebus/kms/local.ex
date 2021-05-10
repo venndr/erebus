@@ -12,12 +12,13 @@ defmodule Erebus.KMS.Local do
       ) do
     private_key = Erebus.PrivateKeyStore.get_key(handle, version, opts)
 
-    :public_key.decrypt_private(encrypted_dek, private_key,
+    :public_key.decrypt_private(
+      encrypted_dek |> Base.decode64!(),
+      private_key,
       rsa_padding: :rsa_pkcs1_oaep_padding,
       rsa_mgf1_md: :sha256,
       rsa_oaep_md: :sha256
     )
-    |> Base.encode64()
   end
 
   @impl true
@@ -26,7 +27,9 @@ defmodule Erebus.KMS.Local do
 
     %Erebus.EncryptedData{
       encrypted_dek:
-        :public_key.encrypt_public(dek, public_key,
+        :public_key.encrypt_public(
+          dek,
+          public_key,
           rsa_padding: :rsa_pkcs1_oaep_padding,
           rsa_mgf1_md: :sha256,
           rsa_oaep_md: :sha256

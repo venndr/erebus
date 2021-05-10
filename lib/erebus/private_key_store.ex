@@ -17,11 +17,11 @@ defmodule Erebus.PrivateKeyStore do
   end
 
   defp return_or_fetch([], handle, version, opts) do
-    public_key = Erebus.KMS.get_private_key(handle, version, opts)
+    private_key = Erebus.KMS.get_private_key(handle, version, opts)
 
-    :ets.insert(@table, {calculate_key(handle, version), public_key})
+    :ets.insert(@table, {calculate_key(handle, version), private_key})
 
-    public_key
+    private_key
   end
 
   defp return_or_fetch([{_, key} | _], _handle, _version, _opts), do: key
