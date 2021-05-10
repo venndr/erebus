@@ -23,3 +23,116 @@ be found at [https://hexdocs.pm/erebus](https://hexdocs.pm/erebus).
 
 - Cloud KMS CryptoKey Encrypter/Decrypter
 - Cloud KMS CryptoKey Public Key Viewer
+
+### Usage
+
+To use Erebus you need to wrap it and provide your own configuration to calls.
+
+Put following module in your app:
+
+```
+defmodule MyApp.Erebus do
+  def encrypt(struct, handle, version) do
+    opts = Application.get_env(:my_app, :erebus)
+
+    Erebus.encrypt(struct, handle, version, opts)
+  end
+
+  def decrypt() do
+    opts = Application.get_env(:my_app, :erebus)
+  end
+end
+```
+
+and for encryptable fields define protocol implementation:
+
+```
+defimpl Erebus.Encryption do
+  def encrypted_fields(_), do: [:first, :second]
+end
+```
+
+and for that struct add fields named:
+
+```
+first
+second
+first_encrypted
+second_encrypted
+first_hash
+second_hash
+dek
+```
+
+in case of Ecto, they need to be defined as follows:
+
+```
+embedded_schema "table" do
+  field(:first_encrypted, :map)
+  field(:first_hash, :string)
+  field(:second_encrypted, :map)
+  field(:second_hash, :string)
+  field(:dek, :map)
+
+  field(:first, :string, virtual: true)
+  field(:second, :string, virtual: true)
+end
+```
+
+and provide following values in config:
+
+```
+config :my_app, :erebus, kms_backend: Erebus.KMS.Local, keys_base_path: "some_path"
+```
+
+or, in case of using Google KMS:
+
+```
+config :my_app, :erebus,
+  kms_backend: Erebus.KMS.Google,
+  google_project: "someproject",
+  google_region: "someregion",
+  google_keyring: "some_keyring"
+```
+
+After that, you can start using erebus!
+
+```
+defmodule EncryptedStuff do
+    use Ecto.Schema
+    import Ecto.Changeset
+
+    embedded_schema do
+      field(:first_encrypted, :map)
+      field(:first_hash, :string)
+      field(:second_encrypted, :map)
+      field(:second_hash, :string)
+      field(:dek, :map)
+      field(:other, :string)
+
+      field(:first, :string, virtual: true)
+      field(:second, :string, virtual: true)
+    end
+
+    def changeset(stuff, attrs) do
+      changes =
+        stuff
+        |> cast(attrs, [
+          :first,
+          :second
+        ])
+
+      encrypted_data =
+        changes
+        |> MyApp.Erebus.encrypt("handle", 1)
+
+      Ecto.Changeset.change(changes, encrypted_data)
+    end
+
+    defimpl Erebus.Encryption do
+      def encrypted_fields(_), do: [:first, :second]
+    end
+  end
+```
+
+If you don't need multiple encryption keys, provide at hard-coded in `MyApp.Erebus`.
