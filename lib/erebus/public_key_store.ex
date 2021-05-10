@@ -1,26 +1,23 @@
 defmodule Erebus.PublicKeyStore do
-  use Agent
-
-  def start_link(_) do
-    Agent.start_link(fn -> %{} end, name: __MODULE__)
+  def init() do
+    :ets.new(:erebus_public_key_store, [:set, :private, :named_table])
   end
 
-  def get_key(handle, version) do
-    key = Agent.get(__MODULE__, fn state -> Map.get(state, calculate_key(handle, version)) end)
-    return_or_fetch(key, handle, version)
+  def get_key(handle, version, opts) do
+    key = :ets.lookup(:erebus_public_key_store, calculate_key(handle, version))
+
+    return_or_fetch(key, handle, version, opts)
   end
 
-  defp return_or_fetch(nil, handle, version) do
-    public_key = Erebus.KMS.get_public_key(handle, version)
+  defp return_or_fetch([], handle, version, opts) do
+    public_key = Erebus.KMS.get_public_key(handle, version, opts)
 
-    Agent.update(__MODULE__, fn state ->
-      Map.put(state, calculate_key(handle, version), public_key)
-    end)
+    :ets.insert(:erebus_public_key_store, {calculate_key(handle, version), public_key})
 
     public_key
   end
 
-  defp return_or_fetch(key, _handle, _version), do: key
+  defp return_or_fetch([key | _], _handle, _version, _opts), do: key
 
   defp calculate_key(handle, version) when is_integer(version),
     do: calculate_key(handle, Integer.to_string(version))

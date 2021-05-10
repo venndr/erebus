@@ -5,10 +5,12 @@ defmodule Erebus do
   Documentation for `Erebus`.
   """
 
-  def encrypt(struct, handle, version) when is_integer(version),
-    do: encrypt(struct, handle, Integer.to_string(version))
+  def encrypt(struct, handle, version, opts \\ [])
 
-  def encrypt(struct, handle, version) do
+  def encrypt(struct, handle, version, opts) when is_integer(version),
+    do: encrypt(struct, handle, Integer.to_string(version), opts)
+
+  def encrypt(struct, handle, version, opts) do
     if struct.changes
        |> Map.keys()
        |> MapSet.new()
@@ -29,7 +31,7 @@ defmodule Erebus do
 
       dek = :crypto.strong_rand_bytes(32) |> Base.encode64()
 
-      encrypted_dek = Erebus.KMS.encrypt(dek, handle, version)
+      encrypted_dek = Erebus.KMS.encrypt(dek, handle, version, opts)
 
       encrypted_data =
         struct.data
@@ -83,10 +85,10 @@ defmodule Erebus do
     end
   end
 
-  def decrypt(struct, fields_to_decrypt) do
+  def decrypt(struct, fields_to_decrypt, opts \\ []) do
     encrypted_dek = struct.dek |> Erebus.EncryptedData.cast_if_needed()
 
-    decrypted_dek = Erebus.KMS.decrypt(encrypted_dek) |> Base.decode64!()
+    decrypted_dek = Erebus.SymmetricKeyStore.get_key(encrypted_dek, opts)
 
     decrypted_fields =
       Enum.map(fields_to_decrypt, fn field ->

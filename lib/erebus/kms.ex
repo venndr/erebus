@@ -3,15 +3,24 @@ defmodule Erebus.KMS do
   This module is a proxy for key backend
   """
 
-  @callback decrypt(Erebus.EncryptedData.t()) :: binary
+  @callback decrypt(Erebus.EncryptedData.t(), Keyword.t()) :: binary
 
-  @callback encrypt(String.t(), String.t(), String.t()) :: Erebus.EncryptedData.t()
+  @callback encrypt(String.t(), String.t(), String.t(), Keyword.t()) :: Erebus.EncryptedData.t()
 
-  @callback get_public_key(String.t(), String.t()) :: term()
+  @callback get_public_key(String.t(), String.t(), Keyword.t()) :: term()
 
-  def decrypt(%Erebus.EncryptedData{} = data), do: Erebus.KMS.Google.decrypt(data)
+  def decrypt(%Erebus.EncryptedData{} = data, opts) do
+    kms_backend = Keyword.get(opts, :kms_backend)
+    apply(kms_backend, :decrypt, [data, opts]) |> Base.decode64!()
+  end
 
-  def encrypt(dek, handle, version), do: Erebus.KMS.Google.encrypt(dek, handle, version)
+  def encrypt(dek, handle, version, opts) do
+    kms_backend = Keyword.get(opts, :kms_backend)
+    apply(kms_backend, :encrypt, [dek, handle, version, opts])
+  end
 
-  def get_public_key(handle, version), do: Erebus.KMS.Google.get_public_key(handle, version)
+  def get_public_key(handle, version, opts) do
+    kms_backend = Keyword.get(opts, :kms_backend)
+    apply(kms_backend, :get_public_key, [handle, version, opts])
+  end
 end

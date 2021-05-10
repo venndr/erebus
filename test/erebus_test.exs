@@ -2,6 +2,13 @@ defmodule Erebus.Test do
   use ExUnit.Case
   doctest Erebus
 
+  setup do
+    Erebus.PublicKeyStore.init()
+    Erebus.SymmetricKeyStore.init()
+
+    :ok
+  end
+
   defmodule EncryptedStuff do
     use Ecto.Schema
     import Ecto.Changeset
@@ -26,7 +33,12 @@ defmodule Erebus.Test do
           :second
         ])
 
-      encrypted_data = changes |> Erebus.encrypt("staging-master", 3)
+      encrypted_data =
+        changes
+        |> Erebus.encrypt("handle", 1,
+          kms_backend: Erebus.KMS.Local,
+          keys_base_path: "/Users/esse/src/venndr/erebus/test/fixtures/keys"
+        )
 
       Ecto.Changeset.change(changes, encrypted_data)
     end
@@ -52,12 +64,22 @@ defmodule Erebus.Test do
 
     assert encrypted.first_hash == :crypto.hash(:sha512, "hello") |> Base.encode64()
 
-    decrypted_first = encrypted |> Erebus.decrypt([:first])
+    decrypted_first =
+      encrypted
+      |> Erebus.decrypt([:first],
+        kms_backend: Erebus.KMS.Local,
+        keys_base_path: "/Users/esse/src/venndr/erebus/test/fixtures/keys"
+      )
 
     assert "hello" == decrypted_first.first
     assert nil == decrypted_first.second
 
-    decrypted_second = decrypted_first |> Erebus.decrypt([:second])
+    decrypted_second =
+      decrypted_first
+      |> Erebus.decrypt([:second],
+        kms_backend: Erebus.KMS.Local,
+        keys_base_path: "/Users/esse/src/venndr/erebus/test/fixtures/keys"
+      )
 
     assert "hello" == decrypted_second.first
     assert "there" == decrypted_second.second

@@ -20,9 +20,11 @@ defmodule Erebus.Application do
     source = {:service_account, credentials, scopes: scopes}
 
     children = [
-      Erebus.PublicKeyStore,
-      {Goth, name: Yggdrasil.Goth, source: source}
+      {Goth, name: Erebus.Goth, source: source}
     ]
+
+    Erebus.PublicKeyStore.init()
+    Erebus.SymmetricKeyStore.init()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options

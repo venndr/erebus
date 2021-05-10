@@ -4,17 +4,24 @@ defmodule Erebus.KMS.Google do
   alias GoogleApi.CloudKMS.V1.Api.Projects, as: CloudKMSApi
 
   @impl true
-  def decrypt(%Erebus.EncryptedData{
-        encrypted_dek: encrypted_dek,
-        handle: handle,
-        version: version
-      }) do
+  def decrypt(
+        %Erebus.EncryptedData{
+          encrypted_dek: encrypted_dek,
+          handle: handle,
+          version: version
+        },
+        opts
+      ) do
+    google_project = Keyword.get(opts, :google_project)
+    google_region = Keyword.get(opts, :google_region)
+    google_keyring = Keyword.get(opts, :google_keyring)
+
     {:ok, %{plaintext: dek}} =
       CloudKMSApi.cloudkms_projects_locations_key_rings_crypto_keys_crypto_key_versions_asymmetric_decrypt(
         connection(),
-        System.fetch_env!("GOOGLE_PROJECT"),
-        System.fetch_env!("GOOGLE_REGION"),
-        System.fetch_env!("GOOGLE_KEYRING"),
+        google_project,
+        google_region,
+        google_keyring,
         handle,
         version,
         body: %{
@@ -26,8 +33,8 @@ defmodule Erebus.KMS.Google do
   end
 
   @impl true
-  def encrypt(dek, handle, version) do
-    public_key = Erebus.PublicKeyStore.get_key(handle, version)
+  def encrypt(dek, handle, version, opts) do
+    public_key = Erebus.PublicKeyStore.get_key(handle, version, opts)
 
     %Erebus.EncryptedData{
       encrypted_dek:
@@ -43,13 +50,17 @@ defmodule Erebus.KMS.Google do
   end
 
   @impl true
-  def get_public_key(handle, version) do
+  def get_public_key(handle, version, opts) do
+    google_project = Keyword.get(opts, :google_project)
+    google_region = Keyword.get(opts, :google_region)
+    google_keyring = Keyword.get(opts, :google_keyring)
+
     {:ok, %{pem: public_key}} =
       CloudKMSApi.cloudkms_projects_locations_key_rings_crypto_keys_crypto_key_versions_get_public_key(
         connection(),
-        System.fetch_env!("GOOGLE_PROJECT"),
-        System.fetch_env!("GOOGLE_REGION"),
-        System.fetch_env!("GOOGLE_KEYRING"),
+        google_project,
+        google_region,
+        google_keyring,
         handle,
         version
       )
@@ -60,8 +71,8 @@ defmodule Erebus.KMS.Google do
     |> :public_key.pem_entry_decode()
   end
 
-  defp connection do
-    {:ok, token} = Goth.fetch(Yggdrasil.Goth)
+  defp connection() do
+    {:ok, token} = Goth.fetch(Erebus.Goth)
     GoogleApi.CloudKMS.V1.Connection.new(token.token)
   end
 end
