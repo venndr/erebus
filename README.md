@@ -1,6 +1,6 @@
 # Erebus
 
-**TODO: Add description**
+[![Elixir CI](https://github.com/venndr/erebus/actions/workflows/elixir.yml/badge.svg)](https://github.com/venndr/erebus/actions/workflows/elixir.yml)
 
 ## Installation
 
