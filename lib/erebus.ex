@@ -9,7 +9,14 @@ defmodule Erebus do
     do: encrypt(struct, handle, Integer.to_string(version), opts)
 
   def encrypt(struct, handle, version, opts),
-    do: do_encrypt(struct, handle, version, opts, not_changing_encrypted_fields?(struct))
+    do:
+      do_encrypt(
+        struct,
+        handle,
+        version,
+        opts,
+        changing_encrypted_fields?(struct) || Keyword.get(opts, :force_reencrypt, false)
+      )
 
   def decrypt(struct, fields_to_decrypt, opts \\ []) do
     encrypted_dek = struct.dek |> Erebus.EncryptedData.cast_if_needed()
@@ -41,24 +48,25 @@ defmodule Erebus do
     Map.merge(struct, decrypted_fields)
   end
 
-  defp not_changing_encrypted_fields?(%{changes: changes, data: data}),
+  defp changing_encrypted_fields?(%{changes: changes, data: data}),
     do:
       changes
       |> Map.keys()
       |> MapSet.new()
       |> MapSet.intersection(MapSet.new(Erebus.Encryption.encrypted_fields(data)))
       |> Enum.empty?()
+      |> Kernel.not()
 
-  defp not_changing_encrypted_fields?(_), do: false
+  defp changing_encrypted_fields?(_), do: false
 
   defp force_decrypt(%{data: %{dek: dek} = data} = struct) when not is_nil(dek),
     do: %{struct | data: decrypt(data, Erebus.Encryption.encrypted_fields(data))}
 
   defp force_decrypt(struct), do: struct
 
-  defp do_encrypt(_struct, _handle, _version, _opts, true), do: %{}
+  defp do_encrypt(_struct, _handle, _version, _opts, false), do: %{}
 
-  defp do_encrypt(struct, handle, version, opts, false) do
+  defp do_encrypt(struct, handle, version, opts, true) do
     struct = force_decrypt(struct)
 
     dek = :crypto.strong_rand_bytes(32) |> Base.encode64()

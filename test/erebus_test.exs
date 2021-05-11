@@ -16,14 +16,14 @@ defmodule Erebus.Test do
     import Erebus.Schema
 
     embedded_schema do
-      hashed_encrypted_field :first
-      hashed_encrypted_field :second
+      hashed_encrypted_field(:first)
+      hashed_encrypted_field(:second)
       data_encryption_key()
 
       field(:other, :string)
     end
 
-    def changeset(stuff, attrs) do
+    def changeset(stuff, attrs, force_reencrypt \\ false) do
       changes =
         stuff
         |> cast(attrs, [
@@ -33,7 +33,10 @@ defmodule Erebus.Test do
 
       encrypted_data =
         changes
-        |> Erebus.encrypt("handle", 1, kms_backend: Erebus.TestBackend)
+        |> Erebus.encrypt("handle", 1,
+          kms_backend: Erebus.TestBackend,
+          force_reencrypt: force_reencrypt
+        )
 
       Ecto.Changeset.change(changes, encrypted_data)
     end
@@ -106,6 +109,31 @@ defmodule Erebus.Test do
     encrypted =
       model
       |> EncryptedStuff.changeset(%{first: "hello"})
+      |> Ecto.Changeset.apply_changes()
+      # simulate reloading with virtual fields emptied
+      |> Map.merge(%{first: nil})
+
+    assert !is_nil(encrypted.dek)
+    assert !is_nil(encrypted.first_hash)
+    assert !is_nil(encrypted.first_encrypted)
+    assert is_nil(encrypted.second_hash)
+    assert is_nil(encrypted.second_encrypted)
+
+    decrypted_first =
+      encrypted
+      |> Erebus.decrypt([:first],
+        kms_backend: Erebus.TestBackend
+      )
+
+    assert "hello" == decrypted_first.first
+  end
+
+  test "forcing data reencryption" do
+    model = %EncryptedStuff{first: "hello"}
+
+    encrypted =
+      model
+      |> EncryptedStuff.changeset(%{}, true)
       |> Ecto.Changeset.apply_changes()
       # simulate reloading with virtual fields emptied
       |> Map.merge(%{first: nil})
