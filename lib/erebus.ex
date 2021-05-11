@@ -80,32 +80,34 @@ defmodule Erebus do
 
           data_to_encrypt = struct.changes |> Map.get(field) || Map.get(struct.data, field)
 
-          {ciphertext, ciphertag} =
-            :crypto.crypto_one_time_aead(
-              @cipher,
-              dek |> Base.decode64!(),
-              iv,
-              data_to_encrypt,
-              aead,
-              16,
-              true
-            )
-
-          [
-            {
-              String.to_atom(stringified <> "_encrypted"),
-              Base.encode64(
-                iv <>
-                  aead <>
-                  ciphertag <>
-                  ciphertext
+          if not is_nil(data_to_encrypt) do
+            {ciphertext, ciphertag} =
+              :crypto.crypto_one_time_aead(
+                @cipher,
+                dek |> Base.decode64!(),
+                iv,
+                data_to_encrypt,
+                aead,
+                16,
+                true
               )
-            },
-            {
-              String.to_atom(stringified <> "_hash"),
-              :crypto.hash(:sha512, data_to_encrypt) |> Base.encode64()
-            }
-          ]
+
+            [
+              {
+                String.to_atom(stringified <> "_encrypted"),
+                Base.encode64(
+                  iv <>
+                    aead <>
+                    ciphertag <>
+                    ciphertext
+                )
+              },
+              {
+                String.to_atom(stringified <> "_hash"),
+                :crypto.hash(:sha512, data_to_encrypt) |> Base.encode64()
+              }
+            ]
+          end
       end)
       |> Enum.filter(& &1)
       |> List.flatten()

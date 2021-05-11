@@ -99,4 +99,29 @@ defmodule Erebus.Test do
     assert hash_before == encrypted_3.first_encrypted
     assert dek_before == encrypted_3.dek
   end
+
+  test "encrypting and decrypting data with one field being null" do
+    model = %EncryptedStuff{}
+
+    encrypted =
+      model
+      |> EncryptedStuff.changeset(%{first: "hello"})
+      |> Ecto.Changeset.apply_changes()
+      # simulate reloading with virtual fields emptied
+      |> Map.merge(%{first: nil})
+
+    assert !is_nil(encrypted.dek)
+    assert !is_nil(encrypted.first_hash)
+    assert !is_nil(encrypted.first_encrypted)
+    assert is_nil(encrypted.second_hash)
+    assert is_nil(encrypted.second_encrypted)
+
+    decrypted_first =
+      encrypted
+      |> Erebus.decrypt([:first],
+        kms_backend: Erebus.TestBackend
+      )
+
+    assert "hello" == decrypted_first.first
+  end
 end
