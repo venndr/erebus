@@ -13,17 +13,14 @@ defmodule Erebus.Test do
   defmodule EncryptedStuff do
     use Ecto.Schema
     import Ecto.Changeset
+    import Erebus.Schema
 
     embedded_schema do
-      field(:first_encrypted, :map)
-      field(:first_hash, :string)
-      field(:second_encrypted, :map)
-      field(:second_hash, :string)
-      field(:dek, :map)
-      field(:other, :string)
+      hashed_encrypted_field :first
+      hashed_encrypted_field :second
+      data_encryption_key()
 
-      field(:first, :string, virtual: true)
-      field(:second, :string, virtual: true)
+      field(:other, :string)
     end
 
     def changeset(stuff, attrs) do
