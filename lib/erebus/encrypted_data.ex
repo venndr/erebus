@@ -7,6 +7,7 @@ defmodule Erebus.EncryptedData do
           version: binary()
         }
 
+  @derive Jason.Encoder
   defstruct @fields
 
   def cast_if_needed(%__MODULE__{} = encrypted_data), do: encrypted_data

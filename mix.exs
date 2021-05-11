@@ -28,7 +28,8 @@ defmodule Erebus.MixProject do
       {:hackney, "~> 1.17"},
       {:ecto, "~> 3.0", only: :test},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
-      {:mock, "~> 0.3.0", only: :test}
+      {:mock, "~> 0.3.0", only: :test},
+      {:jason, "~> 1.0"}
     ]
   end
 end
