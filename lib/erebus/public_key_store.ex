@@ -22,17 +22,10 @@ defmodule Erebus.PublicKeyStore do
 
     :ets.insert(@table, {calculated_key, public_key})
 
-    Task.start(fn -> expire_cache_entry(calculated_key) end)
-
     public_key
   end
 
   defp return_or_fetch([{_, key} | _], _handle, _version, _opts), do: key
 
   defp calculate_key(handle, version), do: handle <> "#" <> version
-
-  def expire_cache_entry(key) do
-    15 |> :timer.minutes() |> :timer.sleep()
-    :ets.delete(@table, key)
-  end
 end
