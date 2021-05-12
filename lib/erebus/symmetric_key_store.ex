@@ -6,7 +6,12 @@ defmodule Erebus.SymmetricKeyStore do
   end
 
   defp create_table_if_needed(:undefined),
-    do: :ets.new(@table, [:set, :public, :named_table])
+    do:
+      :ets.new(@table, [
+        :set,
+        :public,
+        :named_table
+      ])
 
   defp create_table_if_needed(_), do: nil
 
@@ -21,8 +26,15 @@ defmodule Erebus.SymmetricKeyStore do
 
     :ets.insert(@table, {encrypted, symmetric_key})
 
+    Task.start(fn -> expire_cache_entry(encrypted) end)
+
     symmetric_key
   end
 
   defp return_or_fetch([{_, key} | _], _handle, _version), do: key
+
+  def expire_cache_entry(key) do
+    15 |> :timer.minutes() |> :timer.sleep()
+    :ets.delete(@table, key)
+  end
 end

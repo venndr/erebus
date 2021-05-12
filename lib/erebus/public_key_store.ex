@@ -18,8 +18,11 @@ defmodule Erebus.PublicKeyStore do
 
   defp return_or_fetch([], handle, version, opts) do
     public_key = Erebus.KMS.get_public_key(handle, version, opts)
+    calculated_key = calculate_key(handle, version)
 
-    :ets.insert(@table, {calculate_key(handle, version), public_key})
+    :ets.insert(@table, {calculated_key, public_key})
+
+    Task.start(fn -> expire_cache_entry(calculated_key) end)
 
     public_key
   end
@@ -27,4 +30,9 @@ defmodule Erebus.PublicKeyStore do
   defp return_or_fetch([{_, key} | _], _handle, _version, _opts), do: key
 
   defp calculate_key(handle, version), do: handle <> "#" <> version
+
+  def expire_cache_entry(key) do
+    15 |> :timer.minutes() |> :timer.sleep()
+    :ets.delete(@table, key)
+  end
 end
