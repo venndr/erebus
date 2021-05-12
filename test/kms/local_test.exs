@@ -111,6 +111,43 @@ defmodule Erebus.LocalTest do
     assert dek_before == encrypted_3.dek
   end
 
+  test "reencrypting dek" do
+    model = %EncryptedStuff{}
+
+    encrypted =
+      model
+      |> EncryptedStuff.changeset(%{first: "hello", second: "there"})
+      |> Ecto.Changeset.apply_changes()
+      # simulate reloading with virtual fields emptied
+      |> Map.merge(%{first: nil, second: nil})
+
+    assert !is_nil(encrypted.dek)
+    assert !is_nil(encrypted.first_hash)
+    assert !is_nil(encrypted.first_encrypted)
+
+    %{dek: reencrypted_dek} =
+      Erebus.reencrypt_dek(encrypted, "handle", 1,
+        kms_backend: Erebus.KMS.Local,
+        keys_base_path: fixture_path(),
+        private_key_password: "1234"
+      )
+
+    assert reencrypted_dek.encrypted_dek != encrypted.dek.encrypted_dek
+
+    IO.inspect(reencrypted_dek)
+
+    assert Erebus.KMS.decrypt(reencrypted_dek,
+             kms_backend: Erebus.KMS.Local,
+             keys_base_path: fixture_path(),
+             private_key_password: "1234"
+           ) ==
+             Erebus.KMS.decrypt(encrypted.dek,
+               kms_backend: Erebus.KMS.Local,
+               keys_base_path: fixture_path(),
+               private_key_password: "1234"
+             )
+  end
+
   def fixture_path(),
     do: [__ENV__.file, "..", "..", "fixtures", "keys"] |> Path.join() |> Path.expand()
 end

@@ -60,7 +60,9 @@ defmodule Erebus do
 
   def reencrypt_dek(%{dek: dek}, handle, version, opts) do
     decrypted_dek = Erebus.KMS.decrypt(dek, opts)
-    newly_encrypted_dek = Erebus.KMS.encrypt(decrypted_dek, handle, version, opts)
+
+    newly_encrypted_dek =
+      Erebus.KMS.encrypt(decrypted_dek |> Base.encode64(), handle, version, opts)
 
     %{dek: newly_encrypted_dek}
   end
