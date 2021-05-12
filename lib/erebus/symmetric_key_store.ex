@@ -16,17 +16,21 @@ defmodule Erebus.SymmetricKeyStore do
   defp create_table_if_needed(_), do: nil
 
   def get_key(encrypted, opts) do
-    key = :ets.lookup(@table, encrypted)
+    suffix = Keyword.get(opts, :suffix, "")
+    key = :ets.lookup(@table, calculate_key(encrypted, suffix))
 
     return_or_fetch(key, encrypted, opts)
   end
 
   defp return_or_fetch([], encrypted, opts) do
+    suffix = Keyword.get(opts, :suffix, "")
     symmetric_key = Erebus.KMS.decrypt(encrypted, opts)
 
-    :ets.insert(@table, {encrypted, symmetric_key})
+    calculated_key = calculate_key(encrypted, suffix)
 
-    Task.start(fn -> expire_cache_entry(encrypted) end)
+    :ets.insert(@table, {calculated_key, symmetric_key})
+
+    Task.start(fn -> expire_cache_entry(calculated_key) end)
 
     symmetric_key
   end
@@ -37,4 +41,6 @@ defmodule Erebus.SymmetricKeyStore do
     15 |> :timer.minutes() |> :timer.sleep()
     :ets.delete(@table, key)
   end
+
+  defp calculate_key(encrypted, suffix), do: {encrypted, suffix}
 end
