@@ -55,6 +55,16 @@ defmodule Erebus do
     Map.merge(struct, decrypted_fields)
   end
 
+  def reencrypt_dek(struct, handle, version, opts) when is_integer(version),
+    do: reencrypt_dek(struct, handle, Integer.to_string(version), opts)
+
+  def reencrypt_dek(%{dek: dek}, handle, version, opts) do
+    decrypted_dek = Erebus.KMS.decrypt(dek, opts)
+    newly_encrypted_dek = Erebus.KMS.encrypt(decrypted_dek, handle, version, opts)
+
+    %{dek: newly_encrypted_dek}
+  end
+
   defp changing_encrypted_fields?(%{changes: changes, data: data}),
     do:
       changes

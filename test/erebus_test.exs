@@ -153,4 +153,24 @@ defmodule Erebus.Test do
 
     assert "hello" == decrypted_first.first
   end
+
+  test "reencrypting dek" do
+    model = %EncryptedStuff{}
+
+    encrypted =
+      model
+      |> EncryptedStuff.changeset(%{first: "hello", second: "there"})
+      |> Ecto.Changeset.apply_changes()
+      # simulate reloading with virtual fields emptied
+      |> Map.merge(%{first: nil, second: nil})
+
+    assert !is_nil(encrypted.dek)
+    assert !is_nil(encrypted.first_hash)
+    assert !is_nil(encrypted.first_encrypted)
+
+    %{dek: reencrypted_dek} =
+      Erebus.reencrypt_dek(encrypted, "handle", 1, kms_backend: Erebus.TestBackend)
+
+    assert reencrypted_dek.encrypted_dek != encrypted.dek.encrypted_dek
+  end
 end
