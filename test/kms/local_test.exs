@@ -134,8 +134,6 @@ defmodule Erebus.LocalTest do
 
     assert reencrypted_dek.encrypted_dek != encrypted.dek.encrypted_dek
 
-    IO.inspect(reencrypted_dek)
-
     assert Erebus.KMS.decrypt(reencrypted_dek,
              kms_backend: Erebus.KMS.Local,
              keys_base_path: fixture_path(),

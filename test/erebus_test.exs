@@ -34,7 +34,7 @@ defmodule Erebus.Test do
       encrypted_data =
         changes
         |> Erebus.encrypt("handle", 1,
-          kms_backend: Erebus.TestBackend,
+          kms_backend: Erebus.KMS.Dummy,
           force_reencrypt: force_reencrypt
         )
 
@@ -65,7 +65,7 @@ defmodule Erebus.Test do
     decrypted_first =
       encrypted
       |> Erebus.decrypt([:first],
-        kms_backend: Erebus.TestBackend
+        kms_backend: Erebus.KMS.Dummy
       )
 
     assert "hello" == decrypted_first.first
@@ -74,7 +74,7 @@ defmodule Erebus.Test do
     decrypted_second =
       decrypted_first
       |> Erebus.decrypt([:second],
-        kms_backend: Erebus.TestBackend
+        kms_backend: Erebus.KMS.Dummy
       )
 
     assert "hello" == decrypted_second.first
@@ -122,7 +122,7 @@ defmodule Erebus.Test do
     decrypted_first =
       encrypted
       |> Erebus.decrypt([:first, :second],
-        kms_backend: Erebus.TestBackend
+        kms_backend: Erebus.KMS.Dummy
       )
 
     assert "hello" == decrypted_first.first
@@ -148,7 +148,7 @@ defmodule Erebus.Test do
     decrypted_first =
       encrypted
       |> Erebus.decrypt([:first],
-        kms_backend: Erebus.TestBackend
+        kms_backend: Erebus.KMS.Dummy
       )
 
     assert "hello" == decrypted_first.first
