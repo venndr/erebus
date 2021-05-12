@@ -29,20 +29,27 @@ defmodule Erebus do
 
         encrypted_field = Map.get(struct, String.to_atom(stringified_field <> "_encrypted"))
 
-        <<iv::binary-16, aead::binary-16, ciphertag::binary-16, ciphertext::binary>> =
-          Base.decode64!(encrypted_field)
+        case encrypted_field do
+          nil ->
+            nil
 
-        {field,
-         :crypto.crypto_one_time_aead(
-           @cipher,
-           decrypted_dek,
-           iv,
-           ciphertext,
-           aead,
-           ciphertag,
-           false
-         )}
+          _ ->
+            <<iv::binary-16, aead::binary-16, ciphertag::binary-16, ciphertext::binary>> =
+              Base.decode64!(encrypted_field)
+
+            {field,
+             :crypto.crypto_one_time_aead(
+               @cipher,
+               decrypted_dek,
+               iv,
+               ciphertext,
+               aead,
+               ciphertag,
+               false
+             )}
+        end
       end)
+      |> Enum.filter(& &1)
       |> Enum.into(%{})
 
     Map.merge(struct, decrypted_fields)

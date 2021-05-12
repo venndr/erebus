@@ -121,11 +121,12 @@ defmodule Erebus.Test do
 
     decrypted_first =
       encrypted
-      |> Erebus.decrypt([:first],
+      |> Erebus.decrypt([:first, :second],
         kms_backend: Erebus.TestBackend
       )
 
     assert "hello" == decrypted_first.first
+    assert nil == decrypted_first.second
   end
 
   test "forcing data reencryption" do

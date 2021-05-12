@@ -169,3 +169,4 @@ Currently we support only encoding / decoding data using Ecto changeset.
 ### TODO
 
 - reencrypt DEK operation
+- Ets prefix
