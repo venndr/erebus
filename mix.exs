@@ -47,7 +47,6 @@ defmodule Erebus.MixProject do
 
   defp package(),
     do: [
-      organization: "venndr",
       links: %{"GitHub" => "https://github.com/venndr/erebus"}
     ]
 end
