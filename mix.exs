@@ -12,8 +12,7 @@ defmodule Erebus.MixProject do
       source_url: "https://github.com/venndr/erebus",
       name: "Erebus",
       description: description(),
-      package: package(),
-      organization: "venndr"
+      package: package()
     ]
   end
 
@@ -47,6 +46,7 @@ defmodule Erebus.MixProject do
 
   defp package(),
     do: [
+      organization: "venndr",
       links: %{"GitHub" => "https://github.com/venndr/erebus"}
     ]
 end
