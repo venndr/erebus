@@ -2,21 +2,19 @@ defmodule Erebus do
   @cipher :aes_256_gcm
 
   @moduledoc """
-  This is entrypoint for Erebus library. Here you will find operations for both encrypting and decrypting fields in the database.
+  This is an entry point for the Erebus library. Here you will find operations for both encrypting and decrypting fields in the database.
 
-  Erebus is an implementation of envelope encryption paradigm. For each encrypted struct it's using separate key - called DEK
+  Erebus is an implementation of the envelope encryption paradigm. For each encrypted struct, it's using a separate key - called DEK
   (short for data encryption key). Then that key is encrypted using KEK (key encryption key). DEK is a symmetric key - we're using
-  Aes 256 with galois mode with aead (which guarantees both security and integrity of the data). KEK is an asymmetric key - we're
-  using public key for encryption (for performance reason when using external key storage) and private for decryption. Specific implementation
-  depends on the backend. Currently we're providing three:
-  * `Erebus.KMS.Google` - which uses Google KMS key storage. That basically means that your private key never leaves Google infrastructure,
-  which is most secure option.
+  Aes 256 with Galois mode with aead (which guarantees both security and integrity of the data). KEK is an asymmetric key - we're using the public key for encryption (for performance reason when using external key storage) and private for decryption. Specific implementation depends on the backend. Currently, we're providing three:
+  * `Erebus.KMS.Google` - which uses Google KMS key storage. That means that your private key never leaves Google infrastructure,
+  which is the most secure option.
   * `Erebus.KMS.Local` - which uses private/public key pair stored on your hard drive. Please note that it makes them prone to leakage
   * `Erebus.KMS.Dummy` - which uses base64 as encryption for DEK. Never use it in production.
 
-  Please note that you need to provide config for the operations and call them providing them for each call.
+  Please note that you need to provide config for the operations and call them, providing them for each call.
 
-  Preferred way of running it is with your own wrapper, like:
+  The preferred way of running it is with your wrapper, like:
 
   ```
   defmodule MyApp.Erebus do
@@ -32,7 +30,7 @@ defmodule Erebus do
   end
   ```
 
-  while providing config in your app config file, so for Google KMS it would be:
+  while providing config in your app config file, so for Google KMS, it would be:
   ```
   config :my_app, :erebus,
     kms_backend: Erebus.KMS.Google,
@@ -42,7 +40,7 @@ defmodule Erebus do
     google_goth: MyApp.Goth
   ```
 
-  and for using local key file, it would be:
+  and for using a local key file, it would be:
   ```
   config :my_app, :erebus,
     kms_backend: Erebus.KMS.Local,
@@ -50,8 +48,8 @@ defmodule Erebus do
     private_key_password: "1234"
   ```
 
-  Please note that by using that approach you can use different Erebus config for
-  less vital data (using local keys) and more vital (using more secure Google KMS).
+  Please note that by using that approach, you can use different Erebus config for
+  less vital data (using local keys) and more important (using more secure Google KMS).
   """
 
   @doc false
@@ -66,7 +64,7 @@ defmodule Erebus do
   * options - providing backend and options for that backend
 
   One very meaningful option is `:force_reencrypt` flag,
-  which can be used to for reencrypting all of the fields - even if nothing has been changed there.
+  which can be used for re-encrypting all of the fields - even if nothing has been changed there.
   """
   def encrypt(struct, handle, version, opts),
     do:
@@ -126,7 +124,7 @@ defmodule Erebus do
     do: reencrypt_dek(struct, handle, Integer.to_string(version), opts)
 
   @doc """
-  This method called on encrypted struct, force it to reencrypt DEK using provided KEK backend.
+  This method, called on encrypted struct, force it to re-encrypt DEK using provided KEK backend.
   """
   def reencrypt_dek(%{dek: dek}, handle, version, opts) do
     decrypted_dek = Erebus.KMS.decrypt(dek, opts)

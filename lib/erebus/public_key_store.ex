@@ -10,7 +10,7 @@ defmodule Erebus.PublicKeyStore do
   end
 
   @doc """
-  Get public key from ETS cache OR fetch it from backend.
+  Get the public key from the ETS cache OR fetch it from the backend.
   """
   def get_key(handle, version, opts) do
     suffix = Keyword.get(opts, :suffix, "")

@@ -10,7 +10,7 @@ defmodule Erebus.SymmetricKeyStore do
   end
 
   @doc """
-  Get DEK from ETS cache OR decrypt it using provided KMS backend.
+  Get DEK from the ETS cache OR decrypt it using provided KMS backend.
   """
   def get_key(encrypted, opts) do
     suffix = Keyword.get(opts, :suffix, "")

@@ -5,11 +5,11 @@ defmodule Erebus.KMS.Google do
   This KMS backend uses Google KMS to encrypt/decrypt DEKs. It requires generated 2048 bit RSA key
   with OAEP Padding and SHA256 Digest.
 
-  Please note that used key / service account must have access to following roles:
+  Please note that the used key / service account must have access to the following roles:
   - Cloud KMS CryptoKey Encrypter/Decrypter
   - Cloud KMS CryptoKey Public Key Viewer
 
-  When running it, please provide following options:
+  When running it, please provide the following options:
   ```elixir
   config :my_app, :erebus,
     kms_backend: Erebus.KMS.Google,

@@ -2,7 +2,7 @@ defmodule Erebus.KMS.Dummy do
   @behaviour Erebus.KMS
 
   @moduledoc """
-  This is dummy implementation of KEK backend. Never use it in production!
+  This is a dummy implementation of the KEK backend. Never use it in production!
   It doesn't take any options.
 
   ```elixir

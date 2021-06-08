@@ -10,7 +10,7 @@ defmodule Erebus.PrivateKeyStore do
   end
 
   @doc """
-  Get private key from ETS cache OR fetch it from backend - if backend supports it.
+  Get the private key from the ETS cache OR fetch it from the backend - if the backend supports it.
   """
   def get_key(handle, version, opts) do
     suffix = Keyword.get(opts, :suffix, "")

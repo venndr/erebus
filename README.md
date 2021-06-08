@@ -2,6 +2,20 @@
 
 [![Elixir CI](https://github.com/venndr/erebus/actions/workflows/elixir.yml/badge.svg)](https://github.com/venndr/erebus/actions/workflows/elixir.yml)
 
+Erebus is an implementation of the envelope encryption paradigm. For each encrypted struct, it's using a separate key - called DEK
+(short for data encryption key). It's regenerated (hence re-encrypting fields) on each save - making key encryption barely needed.
+During each encryption, DEK is encrypted using KEK (key encryption key). DEK is a symmetric key - we're using
+Aes 256 with Galois mode with aead (which guarantees both security and integrity of the data). KEK is an asymmetric key - we're
+using a public key for encryption (for performance reason when using external key storage) and private for decryption. Specific implementation
+depends on the backend. Currently, we're providing three:
+
+- `Erebus.KMS.Google` - which uses Google KMS key storage. That means that your private key never leaves Google infrastructure,
+  which is the most secure option.
+- `Erebus.KMS.Local` - which uses private/public key pair stored on your hard drive. Please note that it makes them prone to leakage
+- `Erebus.KMS.Dummy` - which uses base64 as encryption for DEK. Never use it in production.
+
+Please note that you need to provide config for the operations and call them, providing them for each call.
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
@@ -15,23 +29,9 @@ def deps do
 end
 ```
 
-Erebus is an implementation of envelope encryption paradigm. For each encrypted struct it's using separate key - called DEK
-(short for data encryption key). It's regenerated (hence reencrypting fields) on each save - making key encryption barely needed.
-During each encryption DEK is encrypted using KEK (key encryption key). DEK is a symmetric key - we're using
-Aes 256 with galois mode with aead (which guarantees both security and integrity of the data). KEK is an asymmetric key - we're
-using public key for encryption (for performance reason when using external key storage) and private for decryption. Specific implementation
-depends on the backend. Currently we're providing three:
+## Usage
 
-- `Erebus.KMS.Google` - which uses Google KMS key storage. That basically means that your private key never leaves Google infrastructure,
-  which is most secure option.
-- `Erebus.KMS.Local` - which uses private/public key pair stored on your hard drive. Please note that it makes them prone to leakage
-- `Erebus.KMS.Dummy` - which uses base64 as encryption for DEK. Never use it in production.
-
-Please note that you need to provide config for the operations and call them providing them for each call.
-
-### Usage
-
-To use Erebus you need to wrap it and provide your own configuration to calls.
+To use Erebus, you need to wrap it and provide your configuration to calls.
 
 Put following module in your app:
 
@@ -69,7 +69,7 @@ second_hash
 dek
 ```
 
-in case of Ecto, they need to be defined as follows:
+in the case of Ecto, they need to be defined as follows:
 
 ```elixir
 use Erebus.Schema
@@ -81,7 +81,7 @@ embedded_schema "table" do
 end
 ```
 
-#### Usage with local KMS adapter
+### Usage with local KMS adapter
 
 Provide following values in config:
 
@@ -91,7 +91,7 @@ config :my_app, :erebus, kms_backend: Erebus.KMS.Local, keys_base_path: "some_pa
 
 And generate asymmetric key pairs in that folder.
 
-#### Usage with Google KMS adapter
+### Usage with Google KMS adapter
 
 Please add to your application Goth:
 
@@ -128,12 +128,12 @@ config :my_app, :erebus,
   google_goth: MyApp.Goth
 ```
 
-Please note that if you're using Google KMS your key must have access to following roles:
+Please note that if you're using Google KMS, your key must have access to the following roles:
 
 - Cloud KMS CryptoKey Encrypter/Decrypter
 - Cloud KMS CryptoKey Public Key Viewer
 
-#### Ecto usage full example
+### Ecto usage full example
 
 ```elixir
 defmodule EncryptedStuff do
@@ -171,4 +171,4 @@ defmodule EncryptedStuff do
 
 If you don't need multiple encryption keys, provide at hard-coded in `MyApp.Erebus`.
 
-Currently we support only encoding / decoding data using Ecto changeset.
+Currently, we support only encoding / decoding data using Ecto changeset.
