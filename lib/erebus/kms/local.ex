@@ -66,6 +66,7 @@ defmodule Erebus.KMS.Local do
     |> :public_key.pem_entry_decode()
   end
 
+  @doc false
   def get_private_key(handle, version, opts) do
     base_path = Keyword.fetch!(opts, :keys_base_path)
     password = Keyword.fetch!(opts, :private_key_password) |> to_charlist()

@@ -5,6 +5,7 @@ defmodule Erebus.PrivateKeyStore do
   This module serves as cache storage using ETS for private keys.
   """
 
+  @doc false
   def init() do
     @table |> :ets.whereis() |> create_table_if_needed()
   end

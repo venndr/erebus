@@ -5,6 +5,7 @@ defmodule Erebus.SymmetricKeyStore do
   This module serves as cache storage using ETS for decrypted DEKs.
   """
 
+  @doc false
   def init() do
     @table |> :ets.whereis() |> create_table_if_needed()
   end
