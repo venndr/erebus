@@ -10,19 +10,24 @@ by adding `erebus` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:erebus, "~> 0.1.0"}
+    {:erebus, "~> 0.2.0"}
   ]
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/erebus](https://hexdocs.pm/erebus).
+Erebus is an implementation of envelope encryption paradigm. For each encrypted struct it's using separate key - called DEK
+(short for data encryption key). It's regenerated (hence reencrypting fields) on each save - making key encryption barely needed.
+During each encryption DEK is encrypted using KEK (key encryption key). DEK is a symmetric key - we're using
+Aes 256 with galois mode with aead (which guarantees both security and integrity of the data). KEK is an asymmetric key - we're
+using public key for encryption (for performance reason when using external key storage) and private for decryption. Specific implementation
+depends on the backend. Currently we're providing three:
 
-### Required role for Google service account
+- `Erebus.KMS.Google` - which uses Google KMS key storage. That basically means that your private key never leaves Google infrastructure,
+  which is most secure option.
+- `Erebus.KMS.Local` - which uses private/public key pair stored on your hard drive. Please note that it makes them prone to leakage
+- `Erebus.KMS.Dummy` - which uses base64 as encryption for DEK. Never use it in production.
 
-- Cloud KMS CryptoKey Encrypter/Decrypter
-- Cloud KMS CryptoKey Public Key Viewer
+Please note that you need to provide config for the operations and call them providing them for each call.
 
 ### Usage
 
@@ -67,25 +72,28 @@ dek
 in case of Ecto, they need to be defined as follows:
 
 ```elixir
-embedded_schema "table" do
-  field(:first_encrypted, :map)
-  field(:first_hash, :string)
-  field(:second_encrypted, :map)
-  field(:second_hash, :string)
-  field(:dek, :map)
+use Erebus.Schema
 
-  field(:first, :string, virtual: true)
-  field(:second, :string, virtual: true)
+embedded_schema "table" do
+  hashed_encrypted_field(:first)
+  hashed_encrypted_field(:second)
+  data_encryption_key()
 end
 ```
 
-and provide following values in config:
+#### Usage with local KMS adapter
+
+Provide following values in config:
 
 ```elixir
 config :my_app, :erebus, kms_backend: Erebus.KMS.Local, keys_base_path: "some_path", private_key_password: "1234"
 ```
 
-or, in case of using Google KMS please add to your application Goth:
+And generate asymmetric key pairs in that folder.
+
+#### Usage with Google KMS adapter
+
+Please add to your application Goth:
 
 ```
 {:goth, "~> 1.3.0-rc.2"}
@@ -99,8 +107,6 @@ credentials =
   |> System.fetch_env!()
   |> File.read!()
   |> Jason.decode!()
-
-# temp
 
 scopes = ["https://www.googleapis.com/auth/cloudkms"]
 
@@ -122,23 +128,24 @@ config :my_app, :erebus,
   google_goth: MyApp.Goth
 ```
 
-After that, you can start using erebus!
+Please note that if you're using Google KMS your key must have access to following roles:
+
+- Cloud KMS CryptoKey Encrypter/Decrypter
+- Cloud KMS CryptoKey Public Key Viewer
+
+#### Ecto usage full example
 
 ```elixir
 defmodule EncryptedStuff do
     use Ecto.Schema
     import Ecto.Changeset
+    use Erebus.Schema
 
     embedded_schema do
-      field(:first_encrypted, :map)
-      field(:first_hash, :string)
-      field(:second_encrypted, :map)
-      field(:second_hash, :string)
-      field(:dek, :map)
+      hashed_encrypted_field(:first)
+      hashed_encrypted_field(:second)
+      data_encryption_key()
       field(:other, :string)
-
-      field(:first, :string, virtual: true)
-      field(:second, :string, virtual: true)
     end
 
     def changeset(stuff, attrs) do

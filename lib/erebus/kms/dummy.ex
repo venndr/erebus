@@ -3,7 +3,11 @@ defmodule Erebus.KMS.Dummy do
 
   @moduledoc """
   This is dummy implementation of KEK backend. Never use it in production!
-  It doesn't take anuy options.
+  It doesn't take any options.
+
+  ```elixir
+  config :my_app, :erebus, kms_backend: Erebus.KMS.Dummy
+  ```
   """
 
   @doc false

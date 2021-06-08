@@ -19,6 +19,12 @@ defmodule Erebus.PrivateKeyStore do
     return_or_fetch(key, handle, version, opts)
   end
 
+  @doc false
+  def expire_cache_entry(key) do
+    15 |> :timer.minutes() |> :timer.sleep()
+    :ets.delete(@table, key)
+  end
+
   defp create_table_if_needed(:undefined),
     do:
       :ets.new(@table, [
@@ -44,10 +50,4 @@ defmodule Erebus.PrivateKeyStore do
   defp return_or_fetch([{_, key} | _], _handle, _version, _opts), do: key
 
   defp calculate_key(handle, version, suffix), do: {handle, version, suffix}
-
-  @doc false
-  def expire_cache_entry(key) do
-    15 |> :timer.minutes() |> :timer.sleep()
-    :ets.delete(@table, key)
-  end
 end

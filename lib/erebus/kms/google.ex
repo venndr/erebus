@@ -1,8 +1,28 @@
 defmodule Erebus.KMS.Google do
   @behaviour Erebus.KMS
 
+  @moduledoc """
+  This KMS backend uses Google KMS to encrypt/decrypt DEKs. It requires generated 2048 bit RSA key
+  with OAEP Padding and SHA256 Digest.
+
+  Please note that used key / service account must have access to following roles:
+  - Cloud KMS CryptoKey Encrypter/Decrypter
+  - Cloud KMS CryptoKey Public Key Viewer
+
+  When running it, please provide following options:
+  ```elixir
+  config :my_app, :erebus,
+    kms_backend: Erebus.KMS.Google,
+    google_project: "someproject",
+    google_region: "someregion",
+    google_keyring: "some_keyring",
+    google_goth: MyApp.Goth
+  ```
+  """
+
   alias GoogleApi.CloudKMS.V1.Api.Projects, as: CloudKMSApi
 
+  @doc false
   @impl true
   def decrypt(
         %Erebus.EncryptedData{
@@ -32,6 +52,7 @@ defmodule Erebus.KMS.Google do
     dek |> Base.decode64!()
   end
 
+  @doc false
   @impl true
   def encrypt(dek, handle, version, opts) do
     public_key = Erebus.PublicKeyStore.get_key(handle, version, opts)
@@ -49,6 +70,7 @@ defmodule Erebus.KMS.Google do
     }
   end
 
+  @doc false
   def get_public_key(handle, version, opts) do
     google_project = Keyword.fetch!(opts, :google_project)
     google_region = Keyword.fetch!(opts, :google_region)
