@@ -12,7 +12,8 @@ defmodule Erebus.MixProject do
       source_url: "https://github.com/venndr/erebus",
       name: "Erebus",
       description: description(),
-      package: package()
+      package: package(),
+      organization: "venndr"
     ]
   end
 
