@@ -7,16 +7,25 @@ defmodule Erebus.KMS do
 
   @callback encrypt(String.t(), String.t(), String.t(), Keyword.t()) :: Erebus.EncryptedData.t()
 
+  @doc """
+  Decrypt DEK - provided in form of `Erebus.EncryptedData` struct, using provided backend.
+  """
   def decrypt(%Erebus.EncryptedData{} = data, opts) do
     kms_backend = Keyword.fetch!(opts, :kms_backend)
     apply(kms_backend, :decrypt, [data, opts]) |> Base.decode64!()
   end
 
+  @doc """
+  Encrypt DEK - returns `Erebus.EncryptedData` struct with encrypted DEK, using given handle, version and backend.
+  """
   def encrypt(dek, handle, version, opts) do
     kms_backend = Keyword.fetch!(opts, :kms_backend)
     apply(kms_backend, :encrypt, [dek, handle, version, opts])
   end
 
+  @doc """
+  Fetch public key for given handle and version for given KMS backend (if it supports it).
+  """
   def get_public_key(handle, version, opts) do
     kms_backend = Keyword.fetch!(opts, :kms_backend)
 
@@ -27,6 +36,9 @@ defmodule Erebus.KMS do
     end
   end
 
+  @doc """
+  Fetch private key for given handle and version for given KMS backend (if it supports it)..
+  """
   def get_private_key(handle, version, opts) do
     kms_backend = Keyword.fetch!(opts, :kms_backend)
 

@@ -1,21 +1,28 @@
 defmodule Erebus.PublicKeyStore do
   @table :erebus_public_key_store
 
+  @moduledoc """
+  This module serves as cache storage using ETS for public keys.
+  """
+
   def init() do
     @table |> :ets.whereis() |> create_table_if_needed()
   end
 
-  defp create_table_if_needed(:undefined),
-    do: :ets.new(@table, [:set, :public, :named_table])
-
-  defp create_table_if_needed(_), do: nil
-
+  @doc """
+  Get public key from ETS cache OR fetch it from backend.
+  """
   def get_key(handle, version, opts) do
     suffix = Keyword.get(opts, :suffix, "")
     key = :ets.lookup(@table, calculate_key(handle, version, suffix))
 
     return_or_fetch(key, handle, version, opts)
   end
+
+  defp create_table_if_needed(:undefined),
+    do: :ets.new(@table, [:set, :public, :named_table])
+
+  defp create_table_if_needed(_), do: nil
 
   defp return_or_fetch([], handle, version, opts) do
     suffix = Keyword.get(opts, :suffix, "")

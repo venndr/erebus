@@ -1,6 +1,12 @@
 defmodule Erebus.KMS.Dummy do
   @behaviour Erebus.KMS
 
+  @moduledoc """
+  This is dummy implementation of KEK backend. Never use it in production!
+  It doesn't take anuy options.
+  """
+
+  @doc false
   @impl true
   def decrypt(
         %Erebus.EncryptedData{
@@ -14,6 +20,7 @@ defmodule Erebus.KMS.Dummy do
     |> Base.decode64!()
   end
 
+  @doc false
   @impl true
   def encrypt(dek, handle, version, _opts) do
     %Erebus.EncryptedData{

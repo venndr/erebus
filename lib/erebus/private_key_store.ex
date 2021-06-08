@@ -1,8 +1,22 @@
 defmodule Erebus.PrivateKeyStore do
   @table :erebus_private_key_store
 
+  @moduledoc """
+  This module serves as cache storage using ETS for private keys.
+  """
+
   def init() do
     @table |> :ets.whereis() |> create_table_if_needed()
+  end
+
+  @doc """
+  Get private key from ETS cache OR fetch it from backend - if backend supports it.
+  """
+  def get_key(handle, version, opts) do
+    suffix = Keyword.get(opts, :suffix, "")
+    key = :ets.lookup(@table, calculate_key(handle, version, suffix))
+
+    return_or_fetch(key, handle, version, opts)
   end
 
   defp create_table_if_needed(:undefined),
@@ -14,13 +28,6 @@ defmodule Erebus.PrivateKeyStore do
       ])
 
   defp create_table_if_needed(_), do: nil
-
-  def get_key(handle, version, opts) do
-    suffix = Keyword.get(opts, :suffix, "")
-    key = :ets.lookup(@table, calculate_key(handle, version, suffix))
-
-    return_or_fetch(key, handle, version, opts)
-  end
 
   defp return_or_fetch([], handle, version, opts) do
     suffix = Keyword.get(opts, :suffix, "")
@@ -38,6 +45,7 @@ defmodule Erebus.PrivateKeyStore do
 
   defp calculate_key(handle, version, suffix), do: {handle, version, suffix}
 
+  @doc false
   def expire_cache_entry(key) do
     15 |> :timer.minutes() |> :timer.sleep()
     :ets.delete(@table, key)
