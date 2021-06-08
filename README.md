@@ -24,7 +24,7 @@ by adding `erebus` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:erebus, "~> 0.2.0"}
+    {:erebus, "~> 0.2.0-rc.1"}
   ]
 end
 ```
