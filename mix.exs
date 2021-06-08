@@ -33,7 +33,8 @@ defmodule Erebus.MixProject do
       {:ecto, "~> 3.0", only: :test},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
       {:mock, "~> 0.3.0", only: :test},
-      {:jason, "~> 1.0"}
+      {:jason, "~> 1.0"},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
 
