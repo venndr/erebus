@@ -1,6 +1,6 @@
 defmodule Erebus.KMS do
   @moduledoc """
-  This module is a proxy for key backend
+  This module is a proxy for a key backend
   """
 
   @callback decrypt(Erebus.EncryptedData.t(), Keyword.t()) :: binary
@@ -8,7 +8,7 @@ defmodule Erebus.KMS do
   @callback encrypt(String.t(), String.t(), String.t(), Keyword.t()) :: Erebus.EncryptedData.t()
 
   @doc """
-  Decrypts DEK - provided in the form of `Erebus.EncryptedData` struct, using provided backend.
+  Decrypts DEK - provided in the form of `Erebus.EncryptedData` struct, using the provided backend.
   """
   def decrypt(%Erebus.EncryptedData{} = data, opts) do
     kms_backend = Keyword.fetch!(opts, :kms_backend)
@@ -16,7 +16,8 @@ defmodule Erebus.KMS do
   end
 
   @doc """
-  Encrypts DEK - returns `Erebus.EncryptedData` struct with encrypted DEK, using given handle, version and backend.
+  Encrypts DEK - returns `Erebus.EncryptedData` struct with encrypted DEK, using given handle,
+  version and backend.
   """
   def encrypt(dek, handle, version, opts) do
     kms_backend = Keyword.fetch!(opts, :kms_backend)
@@ -24,7 +25,8 @@ defmodule Erebus.KMS do
   end
 
   @doc """
-  Fetch the public key for the given handle and version for the given KMS backend (if it supports it).
+  Fetches the public key for the given handle and version for the given KMS backend (if it is
+  supported).
   """
   def get_public_key(handle, version, opts) do
     kms_backend = Keyword.fetch!(opts, :kms_backend)
@@ -37,7 +39,8 @@ defmodule Erebus.KMS do
   end
 
   @doc """
-  Fetch the private key for the given handle and version for the given KMS backend (if it supports it).
+  Fetches the private key for the given handle and version for the given KMS backend (if it is
+  supported).
   """
   def get_private_key(handle, version, opts) do
     kms_backend = Keyword.fetch!(opts, :kms_backend)

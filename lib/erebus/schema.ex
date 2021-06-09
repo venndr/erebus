@@ -1,6 +1,6 @@
 defmodule Erebus.Schema do
   @moduledoc """
-  This module provides convenient macros to define fields in your Ecto model easily.
+  This module provides macros for defining fields on your Ecto model.
 
   Usage:
   ```elixir
@@ -8,9 +8,9 @@ defmodule Erebus.Schema do
   use Ecto.Schema
 
   embedded_schema do
-      hashed_encrypted_field(:first)
-      data_encryption_key()
-    end
+    hashed_encrypted_field(:first)
+    data_encryption_key()
+  end
   """
 
   @doc """
@@ -32,9 +32,11 @@ defmodule Erebus.Schema do
   end
 
   @doc """
-  Defines field dek of type `map`, which is required for storing encrypted information using Erebus.
+  Defines field `dek` of type `map`, which is required for storing encrypted information using
+  Erebus.
 
-  Please note that if you're using it with a database underneath, this field needs to be of type `jsonb` underneath.
+  Please note that if you're using it with a database underneath, this field needs to be of type
+  `jsonb` underneath.
   """
   defmacro data_encryption_key() do
     quote do

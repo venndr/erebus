@@ -1,6 +1,6 @@
 defmodule Erebus.EncryptedData do
   @moduledoc """
-  This module stores data needed for decrypting encrypted struct. It stores:
+  This module stores data necessary for decrypting an encrypted struct. It stores:
   * encrypted dek
   * handle of the key used to encrypt it
   * version of the key used to encrypt it

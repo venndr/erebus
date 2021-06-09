@@ -4,7 +4,7 @@ defmodule Erebus.MixProject do
   def project do
     [
       app: :erebus,
-      version: "0.2.0-rc.1",
+      version: "0.2.0-rc.2",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -40,9 +40,11 @@ defmodule Erebus.MixProject do
 
   defp description(),
     do: """
-    Erebus is an implementation of the envelope encryption paradigm.
-    It allows you to encrypt fields in the database easily.
-    It can use local key files or Google KMS as a key backend, using pluggable and configurable modules.
+    Erebus is an implementation of the envelope encryption paradigm, enabling convenient encrypted
+    database fields.
+
+    It can use local key files or Google KMS as a key backend, using pluggable and configurable
+    modules.
     """
 
   defp package(),
