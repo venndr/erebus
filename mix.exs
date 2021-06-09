@@ -40,9 +40,11 @@ defmodule Erebus.MixProject do
 
   defp description(),
     do: """
-    Erebus is an implementation of the envelope encryption paradigm.
-    It allows you to encrypt fields in the database easily.
-    It can use local key files or Google KMS as a key backend, using pluggable and configurable modules.
+    Erebus is an implementation of the envelope encryption paradigm, enabling convenient encrypted
+    database fields.
+
+    It can use local key files or Google KMS as a key backend, using pluggable and configurable
+    modules.
     """
 
   defp package(),
