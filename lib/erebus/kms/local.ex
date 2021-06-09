@@ -2,10 +2,11 @@ defmodule Erebus.KMS.Local do
   @behaviour Erebus.KMS
 
   @moduledoc """
-  This KMS backend uses locally generate public/private key pairs to encrypt/decrypt DEKs. It requires generated 2048 bit RSA keys
-  with OAEP Padding and SHA256 Digest.
+  The `Erebus.KMS.Local` KMS backend uses a locally stored public/private key pair to encrypt/
+  decrypt DEKs. It requires 2048 bit RSA keys with OAEP Padding and SHA256 Digest.
 
-  When running it, please provide the following options:
+  When using this backend, please provide the following options:
+
   ```elixir
   config :my_app, :erebus, kms_backend: Erebus.KMS.Local, keys_base_path: "some_path", private_key_password: "1234"
   ```
