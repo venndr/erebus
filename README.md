@@ -45,7 +45,7 @@ defmodule MyApp.Erebus do
 end
 ```
 
-For the encryptable fields implementat the `Erebus.Encryption` protocol:
+For the encryptable fields implement the `Erebus.Encryption` protocol:
 
 ```elixir
 defimpl Erebus.Encryption do
