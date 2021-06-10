@@ -22,7 +22,7 @@ Erebus can be installed by adding `erebus` to your list of dependencies in `mix.
 ```elixir
 def deps do
   [
-    {:erebus, "~> 0.2.0-rc.1"}
+    {:erebus, "~> 0.2.0-rc.2"}
   ]
 end
 ```
