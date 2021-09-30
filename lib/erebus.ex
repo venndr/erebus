@@ -160,15 +160,15 @@ defmodule Erebus do
 
   defp changing_encrypted_fields?(_), do: false
 
-  defp force_decrypt(%{data: %{dek: dek} = data} = struct) when not is_nil(dek),
-    do: %{struct | data: decrypt(data, Erebus.Encryption.encrypted_fields(data))}
+  defp force_decrypt(%{data: %{dek: dek} = data} = struct, opts) when not is_nil(dek),
+    do: %{struct | data: decrypt(data, Erebus.Encryption.encrypted_fields(data), opts)}
 
-  defp force_decrypt(struct), do: struct
+  defp force_decrypt(struct, _opts), do: struct
 
   defp do_encrypt(_struct, _handle, _version, _opts, false), do: %{}
 
   defp do_encrypt(struct, handle, version, opts, true) do
-    struct = force_decrypt(struct)
+    struct = force_decrypt(struct, opts)
 
     dek = :crypto.strong_rand_bytes(32) |> Base.encode64()
 
