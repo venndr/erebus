@@ -29,7 +29,7 @@ end
 
 ## Usage
 
-To use Erebus you need to wrap it and provide your backend configuration. Include a module like the example below in your app:
+To use Erebus you need to wrap it to provide your backend configuration. Create a module like the example below in your app:
 
 ```elixir
 defmodule MyApp.Erebus do
@@ -44,14 +44,6 @@ defmodule MyApp.Erebus do
 
     Erebus.decrypt(struct, fields, opts)
   end
-end
-```
-
-For the encryptable fields implement the `Erebus.Encryption` protocol:
-
-```elixir
-defimpl Erebus.Encryption do
-  def encrypted_fields(_), do: [:first, :second]
 end
 ```
 
@@ -71,9 +63,9 @@ defmodule SecureModel
       # this field contains the ciphertext for the `second` field
       second_encrypted: binary(),
 
-      # this field contains a hashed version of the `first` field
+      # this field contains a hashed version of the unencrypted `first` field
       first_hash: String.t(),
-      # this field contains a hashed version of the `second` field
+      # this field contains a hashed version of the unencrypted `second` field
       second_hash: String.t(),
 
       # this field contains the DEK (data encryption key)
@@ -82,9 +74,9 @@ defmodule SecureModel
 end
 ```
 
-In this example `first` and `second` are the names of the encryptable fields. The unsuffixed fields are virtual, meaning they are only used for encrypting or populated after decrypting the `*_encrypted` equivalent fields – they are not read from or written to the database. The `dek` field contains the DEK.
+In this example `first` and `second` are the names of the encryptable fields. The _unsuffixed_ fields are virtual, meaning they are only used for encrypting (before write), or are populated after decrypting the equivalent `*_encrypted` fields – only _suffixed_ fields are written to the database. The `dek` field contains the DEK.
 
-The `*_hash` suffixed fields are hashed (using SHA512) versions of the plain text field content. They are useful in queries for looking up exact matches without decrypting the content.
+The `*_hash` suffixed fields are hashed (using SHA512) versions of the plain text field content. They can be used for finding exact matches without having to decrypt the content.
 
 When using [Ecto](https://hex.pm/packages/ecto), fields are defined using the `hashed_encrypted_field(:field_name)` and `data_encryption_key()` macros, which create all the necessary auxiliary fields for you:
 
@@ -98,60 +90,62 @@ embedded_schema "table" do
 end
 ```
 
-### Usage with local KMS adapter
-
-Provide the following values in config:
+Additionally you must implement the `Erebus.Encryption` protocol to mark the fields which should be encrypted:
 
 ```elixir
-config :my_app, :erebus,
-  kms_backend: Erebus.KMS.Local,
-  keys_base_path: "some_path",
-  private_key_password: "1234"
+defimpl Erebus.Encryption do
+  def encrypted_fields(_), do: [:first, :second]
+end
 ```
 
-And generate asymmetric key pairs (named `public.pem` and `private.pem`) in the folder at `keys_base_path`.
+### Usage with local KMS adapter
+
+1. Set the following values in your application config:
+    ```elixir
+    config :my_app, :erebus,
+      kms_backend: Erebus.KMS.Local,
+      keys_base_path: "path_to_directory_containing_a_key_pair",
+      private_key_password: "1234"
+    ```
+2. Generate asymmetric key pairs (named `public.pem` and `private.pem`) in the folder at `keys_base_path`.
 
 ### Usage with Google KMS adapter
 
-Please include [Goth](https://hex.pm/packages/goth) in your application:
+1. Include [Goth](https://hex.pm/packages/goth) in your application:
+    ```elixir
+    {:goth, "~> 1.3.0-rc.2"}
+    ```
+2. Start Goth in your `application.ex`:
+    ```elixir
+    credentials =
+      "GCP_KMS_CREDENTIALS_PATH"
+      |> System.fetch_env!()
+      |> File.read!()
+      |> Jason.decode!()
 
-```elixir
-{:goth, "~> 1.3.0-rc.2"}
-```
+    scopes = ["https://www.googleapis.com/auth/cloudkms"]
 
-and start it in your application.ex:
+    source = {:service_account, credentials, scopes: scopes}
 
-```elixir
-credentials =
-  "GCP_KMS_CREDENTIALS_PATH"
-  |> System.fetch_env!()
-  |> File.read!()
-  |> Jason.decode!()
-
-scopes = ["https://www.googleapis.com/auth/cloudkms"]
-
-source = {:service_account, credentials, scopes: scopes}
-
-children = [
-  {Goth, name: MyApp.Goth, source: source}
-]
-```
-
-and provide `name` as one of the options to Erebus:
-
-```elixir
-config :my_app, :erebus,
-  kms_backend: Erebus.KMS.Google,
-  google_project: "someproject",
-  google_region: "someregion",
-  google_keyring: "some_keyring",
-  google_goth: MyApp.Goth
-```
+    children = [
+      {Goth, name: MyApp.Goth, source: source}
+    ]
+    ```
+3. Pass the app's `name` in the `google_goth` option to Erebus:
+    ```elixir
+    config :my_app, :erebus,
+      kms_backend: Erebus.KMS.Google,
+      google_project: "someproject",
+      google_region: "someregion",
+      google_keyring: "some_keyring",
+      google_goth: MyApp.Goth
+    ```
 
 Please note that if you're using Google KMS, your key must have access to the following roles:
 
-- Cloud KMS CryptoKey Encrypter/Decrypter
-- Cloud KMS CryptoKey Public Key Viewer
+- [Cloud KMS CryptoKey Encrypter](https://cloud.google.com/kms/docs/reference/permissions-and-roles#cloudkms.cryptoKeyEncrypter)
+- [Cloud KMS CryptoKey Decrypter](https://cloud.google.com/kms/docs/reference/permissions-and-roles#cloudkms.cryptoKeyDecrypter)
+- [Cloud KMS CryptoKey Public Key Viewer](https://cloud.google.com/kms/docs/reference/permissions-and-roles#cloudkms.publicKeyViewer)
 
 ### Ecto usage full example
 
