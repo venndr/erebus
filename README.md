@@ -39,8 +39,10 @@ defmodule MyApp.Erebus do
     Erebus.encrypt(struct, handle, version, opts)
   end
 
-  def decrypt() do
+  def decrypt(struct, fields) do
     opts = Application.get_env(:my_app, :erebus)
+
+    Erebus.decrypt(struct, fields, opts)
   end
 end
 ```
