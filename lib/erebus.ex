@@ -96,12 +96,13 @@ defmodule Erebus do
   * options - providing backend and options for that backend
   """
   def decrypt(struct, fields_to_decrypt, opts \\ []) do
-    encrypted_dek = struct.dek |> Erebus.EncryptedData.cast_if_needed()
+    encrypted_dek = Erebus.EncryptedData.cast_if_needed(struct.dek)
 
     decrypted_dek = Erebus.SymmetricKeyStore.get_key(encrypted_dek, opts)
 
     decrypted_fields =
-      Enum.map(fields_to_decrypt, fn field ->
+      fields_to_decrypt
+      |> Enum.map(fn field ->
         stringified_field = Atom.to_string(field)
 
         encrypted_field = Map.get(struct, String.to_atom(stringified_field <> "_encrypted"))
@@ -181,13 +182,18 @@ defmodule Erebus do
         nil ->
           nil
 
-        field ->
+        field_name ->
           aead = :crypto.strong_rand_bytes(16)
           iv = :crypto.strong_rand_bytes(16)
 
-          stringified = Atom.to_string(field)
+          stringified = Atom.to_string(field_name)
 
-          data_to_encrypt = struct.changes |> Map.get(field) || Map.get(struct.data, field)
+          data_to_encrypt =
+            Map.get_lazy(
+              struct.changes,
+              field_name,
+              fn -> Map.get(struct.data, field_name) end
+            )
 
           if not is_nil(data_to_encrypt) do
             {ciphertext, ciphertag} =
