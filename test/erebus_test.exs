@@ -153,4 +153,15 @@ defmodule Erebus.Test do
 
     assert "hello" == decrypted_first.first
   end
+
+  test "setting a field to nil" do
+    model = %EncryptedModel{first: "beep", second: "boop"}
+
+    encrypted =
+      model
+      |> EncryptedModel.changeset(%{}, true)
+      |> Ecto.Changeset.apply_changes()
+
+    raise "test not implemented"
+  end
 end

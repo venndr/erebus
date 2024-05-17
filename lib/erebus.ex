@@ -224,7 +224,6 @@ defmodule Erebus do
             ]
           end
       end)
-      |> Enum.filter(& &1)
       |> List.flatten()
       |> Enum.into(%{})
 
