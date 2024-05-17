@@ -10,7 +10,7 @@ defmodule Erebus.Test do
     :ok
   end
 
-  defmodule EncryptedStuff do
+  defmodule EncryptedModel do
     use Ecto.Schema
     import Ecto.Changeset
     import Erebus.Schema
@@ -47,11 +47,11 @@ defmodule Erebus.Test do
   end
 
   test "encrypting and decrypting data with ecto" do
-    model = %EncryptedStuff{}
+    model = %EncryptedModel{}
 
     encrypted =
       model
-      |> EncryptedStuff.changeset(%{first: "hello", second: "there"})
+      |> EncryptedModel.changeset(%{first: "hello", second: "there"})
       |> Ecto.Changeset.apply_changes()
       # simulate reloading with virtual fields emptied
       |> Map.merge(%{first: nil, second: nil})
@@ -86,7 +86,7 @@ defmodule Erebus.Test do
 
     encrypted_2 =
       encrypted
-      |> EncryptedStuff.changeset(%{second: "thereX"})
+      |> EncryptedModel.changeset(%{second: "thereX"})
       |> Ecto.Changeset.apply_changes()
 
     assert hash_before != encrypted_2.first_encrypted
@@ -96,7 +96,7 @@ defmodule Erebus.Test do
 
     encrypted_3 =
       encrypted
-      |> EncryptedStuff.changeset(%{other: "somestring"})
+      |> EncryptedModel.changeset(%{other: "somestring"})
       |> Ecto.Changeset.apply_changes()
 
     assert hash_before == encrypted_3.first_encrypted
@@ -104,11 +104,11 @@ defmodule Erebus.Test do
   end
 
   test "encrypting and decrypting data with one field being null" do
-    model = %EncryptedStuff{}
+    model = %EncryptedModel{}
 
     encrypted =
       model
-      |> EncryptedStuff.changeset(%{first: "hello"})
+      |> EncryptedModel.changeset(%{first: "hello"})
       |> Ecto.Changeset.apply_changes()
       # simulate reloading with virtual fields emptied
       |> Map.merge(%{first: nil})
@@ -130,11 +130,11 @@ defmodule Erebus.Test do
   end
 
   test "forcing data reencryption" do
-    model = %EncryptedStuff{first: "hello"}
+    model = %EncryptedModel{first: "hello"}
 
     encrypted =
       model
-      |> EncryptedStuff.changeset(%{}, true)
+      |> EncryptedModel.changeset(%{}, true)
       |> Ecto.Changeset.apply_changes()
       # simulate reloading with virtual fields emptied
       |> Map.merge(%{first: nil})
