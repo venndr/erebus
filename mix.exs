@@ -27,7 +27,7 @@ defmodule Erebus.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:goth, "~> 1.3.0-rc.2"},
+      {:goth, "~> 1.3.0"},
       {:google_api_cloud_kms, "~> 0.32.2"},
       {:hackney, "~> 1.17"},
       {:ecto, "~> 3.0", only: :test},
