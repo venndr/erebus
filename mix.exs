@@ -4,8 +4,8 @@ defmodule Erebus.MixProject do
   def project do
     [
       app: :erebus,
-      version: "0.2.1",
-      elixir: "~> 1.10",
+      version: "0.2.5",
+      elixir: "~> 1.15.4",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       consolidate_protocols: Mix.env() != :test,
@@ -27,7 +27,7 @@ defmodule Erebus.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:goth, "~> 1.3.0"},
+      {:goth, "~> 1.4.2"},
       {:google_api_cloud_kms, "~> 0.32.2"},
       {:hackney, "~> 1.17"},
       {:ecto, "~> 3.0", only: :test},
