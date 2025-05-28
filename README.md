@@ -81,7 +81,7 @@ The `*_hash` suffixed fields are hashed (using SHA512) versions of the plain tex
 When using [Ecto](https://hex.pm/packages/ecto), fields are defined using the `hashed_encrypted_field(:field_name)` and `data_encryption_key()` macros, which create all the necessary auxiliary fields for you:
 
 ```elixir
-use Erebus.Schema
+import Erebus.Schema
 
 embedded_schema "table" do
   hashed_encrypted_field(:first)
@@ -153,7 +153,7 @@ Please note that if you're using Google KMS, your key must have access to the fo
 defmodule EncryptedStuff do
     use Ecto.Schema
     import Ecto.Changeset
-    use Erebus.Schema
+    import Erebus.Schema
 
     embedded_schema do
       hashed_encrypted_field(:first)
