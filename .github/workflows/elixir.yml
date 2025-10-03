@@ -10,14 +10,30 @@ jobs:
   build:
     name: Build and test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        elixir: ["1.18.4", "1.17.3", "1.16.3", "1.15.8"]
+        otp: ["24", "25", "26", "27"]
+        include:
+          - elixir: "1.18.4"
+            otp: "28"
+        exclude:
+          - elixir: "1.18.4"
+            otp: "24"
+          - elixir: "1.17.3"
+            otp: "24"
+          - elixir: "1.16.3"
+            otp: "27"
+          - elixir: "1.15.8"
+            otp: "27"
 
     steps:
       - uses: actions/checkout@v5
       - name: Set up Elixir
-        uses: erlef/setup-beam@v1.17.5
+        uses: erlef/setup-beam@v1.20.4
         with:
-          elixir-version: "1.15.4" # Define the elixir version [required]
-          otp-version: "25" # Define the OTP version [required]
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
       - name: Restore dependencies cache
         uses: actions/cache@v4
         with:
