@@ -5,7 +5,7 @@ defmodule Erebus.MixProject do
     [
       app: :erebus,
       version: "0.2.5",
-      elixir: "~> 1.15.4",
+      elixir: ">= 1.15.4",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       consolidate_protocols: Mix.env() != :test,
