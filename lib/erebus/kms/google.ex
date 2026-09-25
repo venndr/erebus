@@ -38,18 +38,20 @@ defmodule Erebus.KMS.Google do
     google_region = Keyword.fetch!(opts, :google_region)
     google_keyring = Keyword.fetch!(opts, :google_keyring)
 
-    {:ok, %{plaintext: dek}} =
-      CloudKMSApi.cloudkms_projects_locations_key_rings_crypto_keys_crypto_key_versions_asymmetric_decrypt(
-        connection(opts),
-        google_project,
-        google_region,
-        google_keyring,
-        handle,
-        version,
-        body: %{
-          ciphertext: encrypted_dek
-        }
-      )
+    %{plaintext: dek} =
+      call_kms(:decrypt, fn ->
+        CloudKMSApi.cloudkms_projects_locations_key_rings_crypto_keys_crypto_key_versions_asymmetric_decrypt(
+          connection(opts),
+          google_project,
+          google_region,
+          google_keyring,
+          handle,
+          version,
+          body: %{
+            ciphertext: encrypted_dek
+          }
+        )
+      end)
 
     dek |> Base.decode64!()
   end
@@ -78,15 +80,17 @@ defmodule Erebus.KMS.Google do
     google_region = Keyword.fetch!(opts, :google_region)
     google_keyring = Keyword.fetch!(opts, :google_keyring)
 
-    {:ok, %{pem: public_key}} =
-      CloudKMSApi.cloudkms_projects_locations_key_rings_crypto_keys_crypto_key_versions_get_public_key(
-        connection(opts),
-        google_project,
-        google_region,
-        google_keyring,
-        handle,
-        version
-      )
+    %{pem: public_key} =
+      call_kms(:get_public_key, fn ->
+        CloudKMSApi.cloudkms_projects_locations_key_rings_crypto_keys_crypto_key_versions_get_public_key(
+          connection(opts),
+          google_project,
+          google_region,
+          google_keyring,
+          handle,
+          version
+        )
+      end)
 
     public_key
     |> :public_key.pem_decode()
@@ -94,10 +98,45 @@ defmodule Erebus.KMS.Google do
     |> :public_key.pem_entry_decode()
   end
 
-  defp connection(opts) do
-    goth_name = Keyword.fetch!(opts, :google_goth)
+  # A timeout, transport error, 429 or 5xx gets one retry: both KMS calls are
+  # idempotent. Anything else, or a second failure, raises Erebus.KMS.Error.
+  defguardp is_transient(reason)
+            when is_atom(reason) or
+                   (is_tuple(reason) and tuple_size(reason) == 2 and elem(reason, 0) == :closed) or
+                   (is_map_key(reason, :status) and
+                      (:erlang.map_get(:status, reason) == 429 or
+                         :erlang.map_get(:status, reason) >= 500))
 
-    {:ok, token} = Goth.fetch(goth_name)
-    GoogleApi.CloudKMS.V1.Connection.new(token.token)
+  defp call_kms(operation, request), do: request.() |> kms_result(operation, request)
+
+  defp kms_result({:ok, result}, _operation, _retry), do: result
+
+  defp kms_result({:error, reason}, operation, nil), do: raise_kms_error(operation, reason)
+
+  defp kms_result({:error, reason}, operation, retry) when is_transient(reason),
+    do: retry.() |> kms_result(operation, nil)
+
+  defp kms_result({:error, reason}, operation, _retry), do: raise_kms_error(operation, reason)
+
+  defp raise_kms_error(operation, reason),
+    do: raise(Erebus.KMS.Error, operation: operation, reason: error_reason(reason))
+
+  defp error_reason(%{status: status}), do: {:http_status, status}
+  defp error_reason(reason), do: reason
+
+  defp connection(opts),
+    do: opts |> Keyword.fetch!(:google_goth) |> fetch_token() |> connection_from_token()
+
+  # Goth.fetch/1 exits, rather than returning an error, when its token refresh
+  # call times out.
+  defp fetch_token(goth_name) do
+    Goth.fetch(goth_name)
+  catch
+    :exit, reason -> {:error, {:exit, reason}}
   end
+
+  defp connection_from_token({:ok, token}), do: GoogleApi.CloudKMS.V1.Connection.new(token.token)
+
+  defp connection_from_token({:error, reason}),
+    do: raise(Erebus.KMS.Error, operation: :fetch_token, reason: reason)
 end

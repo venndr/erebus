@@ -83,6 +83,92 @@ defmodule Erebus.GoogleTest do
     end
   end
 
+  describe "decrypt when KMS fails" do
+    test "retries a timeout once and returns the DEK" do
+      with_decrypt_results([{:error, :timeout}, :ok], fn ->
+        assert "hellothere" == Erebus.KMS.Google.decrypt(encrypted("hellothere"), google_opts())
+        assert Process.get(:kms_calls) == 2
+      end)
+    end
+
+    test "raises Erebus.KMS.Error when the retry times out too" do
+      with_decrypt_results([{:error, :timeout}, {:error, :timeout}], fn ->
+        assert_raise Erebus.KMS.Error, "KMS decrypt failed: :timeout", fn ->
+          Erebus.KMS.Google.decrypt(encrypted("hellothere"), google_opts())
+        end
+      end)
+    end
+
+    test "retries a 5xx once and returns the DEK" do
+      with_decrypt_results([{:error, %{status: 503, body: "unavailable"}}, :ok], fn ->
+        assert "hellothere" == Erebus.KMS.Google.decrypt(encrypted("hellothere"), google_opts())
+        assert Process.get(:kms_calls) == 2
+      end)
+    end
+
+    test "raises Erebus.KMS.Error when the Goth token fetch exits" do
+      with_mock Goth, fetch: fn _ -> exit({:timeout, {GenServer, :call, []}}) end do
+        assert_raise Erebus.KMS.Error, ~r/KMS fetch_token failed/, fn ->
+          Erebus.KMS.Google.decrypt(encrypted("hellothere"), google_opts())
+        end
+      end
+    end
+
+    test "raises without retrying a non-transient HTTP error" do
+      with_decrypt_results([{:error, %{status: 403, body: "denied"}}], fn ->
+        assert_raise Erebus.KMS.Error, "KMS decrypt failed: {:http_status, 403}", fn ->
+          Erebus.KMS.Google.decrypt(encrypted("hellothere"), google_opts())
+        end
+
+        assert Process.get(:kms_calls) == 1
+      end)
+    end
+
+    test "raises Erebus.KMS.Error when the Goth token fetch fails" do
+      with_mock Goth, fetch: fn _ -> {:error, %RuntimeError{message: "no token"}} end do
+        assert_raise Erebus.KMS.Error, ~r/KMS fetch_token failed/, fn ->
+          Erebus.KMS.Google.decrypt(encrypted("hellothere"), google_opts())
+        end
+      end
+    end
+  end
+
+  # Each KMS call pops the next scripted result; :ok echoes the ciphertext back.
+  defp with_decrypt_results(results, test_fun) do
+    Process.put(:kms_calls, 0)
+    Process.put(:kms_results, results)
+
+    with_mocks [
+      {GoogleApi.CloudKMS.V1.Api.Projects, [],
+       [
+         cloudkms_projects_locations_key_rings_crypto_keys_crypto_key_versions_asymmetric_decrypt:
+           fn _, _, _, _, _, _, body: %{ciphertext: ciphertext} ->
+             Process.put(:kms_calls, Process.get(:kms_calls) + 1)
+             [result | rest] = Process.get(:kms_results)
+             Process.put(:kms_results, rest)
+             kms_result(result, ciphertext)
+           end
+       ]},
+      {Goth, [], [fetch: fn _ -> {:ok, %{token: "token"}} end]}
+    ] do
+      test_fun.()
+    end
+  end
+
+  defp kms_result(:ok, ciphertext), do: {:ok, %{plaintext: ciphertext}}
+  defp kms_result(error, _ciphertext), do: error
+
+  defp encrypted(dek),
+    do: %Erebus.EncryptedData{encrypted_dek: Base.encode64(dek), handle: "x", version: "y"}
+
+  defp google_opts,
+    do: [
+      google_project: "someproject",
+      google_region: "someregion",
+      google_keyring: "somekeyring",
+      google_goth: :not_existing
+    ]
+
   defp read_fixture(path_segments),
     do:
       [__ENV__.file, "..", "..", "fixtures", "keys"]
