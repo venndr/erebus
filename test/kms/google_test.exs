@@ -84,22 +84,24 @@ defmodule Erebus.GoogleTest do
   end
 
   describe "decrypt when KMS fails" do
-    test "retries a timeout once and returns the DEK" do
+    test "retries a timeout and returns the DEK" do
       with_decrypt_results([{:error, :timeout}, :ok], fn ->
         assert "hellothere" == Erebus.KMS.Google.decrypt(encrypted("hellothere"), google_opts())
         assert Process.get(:kms_calls) == 2
       end)
     end
 
-    test "raises Erebus.KMS.Error when the retry times out too" do
-      with_decrypt_results([{:error, :timeout}, {:error, :timeout}], fn ->
+    test "raises Erebus.KMS.Error after five retries time out" do
+      with_decrypt_results(List.duplicate({:error, :timeout}, 6), fn ->
         assert_raise Erebus.KMS.Error, "KMS decrypt failed: :timeout", fn ->
           Erebus.KMS.Google.decrypt(encrypted("hellothere"), google_opts())
         end
+
+        assert Process.get(:kms_calls) == 6
       end)
     end
 
-    test "retries a 5xx once and returns the DEK" do
+    test "retries a 5xx and returns the DEK" do
       with_decrypt_results([{:error, %{status: 503, body: "unavailable"}}, :ok], fn ->
         assert "hellothere" == Erebus.KMS.Google.decrypt(encrypted("hellothere"), google_opts())
         assert Process.get(:kms_calls) == 2
@@ -124,9 +126,13 @@ defmodule Erebus.GoogleTest do
       end)
     end
 
-    test "raises Erebus.KMS.Error when the Goth token fetch fails" do
-      with_mock Goth, fetch: fn _ -> {:error, %RuntimeError{message: "no token"}} end do
-        assert_raise Erebus.KMS.Error, ~r/KMS fetch_token failed/, fn ->
+    test "raises Erebus.KMS.Error without the token response body when the Goth token fetch fails" do
+      error = %RuntimeError{
+        message: "unexpected status 400 from Google\n{\"error\":\"invalid_grant\"}"
+      }
+
+      with_mock Goth, fetch: fn _ -> {:error, error} end do
+        assert_raise Erebus.KMS.Error, "KMS fetch_token failed: :token_fetch_failed", fn ->
           Erebus.KMS.Google.decrypt(encrypted("hellothere"), google_opts())
         end
       end

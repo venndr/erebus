@@ -22,6 +22,8 @@ defmodule Erebus.KMS.Google do
   ```
   """
 
+  use Retry
+
   alias GoogleApi.CloudKMS.V1.Api.Projects, as: CloudKMSApi
 
   @doc false
@@ -98,8 +100,8 @@ defmodule Erebus.KMS.Google do
     |> :public_key.pem_entry_decode()
   end
 
-  # A timeout, transport error, 429 or 5xx gets one retry: both KMS calls are
-  # idempotent. Anything else, or a second failure, raises Erebus.KMS.Error.
+  # A timeout, transport error, 429 or 5xx retries with jittered backoff: both KMS calls
+  # are idempotent. Anything else, or exhausting the retries, raises Erebus.KMS.Error.
   defguardp is_transient(reason)
             when is_atom(reason) or
                    (is_tuple(reason) and tuple_size(reason) == 2 and elem(reason, 0) == :closed) or
@@ -107,16 +109,21 @@ defmodule Erebus.KMS.Google do
                       (:erlang.map_get(:status, reason) == 429 or
                          :erlang.map_get(:status, reason) >= 500))
 
-  defp call_kms(operation, request), do: request.() |> kms_result(operation, request)
+  defp call_kms(operation, request) do
+    retry with: exponential_backoff(100) |> jitter() |> Stream.take(5),
+          atoms: [:transient],
+          rescue_only: [] do
+      request.() |> classify_result()
+    after
+      {:ok, result} -> result
+      {:error, reason} -> raise_kms_error(operation, reason)
+    else
+      {:transient, reason} -> raise_kms_error(operation, reason)
+    end
+  end
 
-  defp kms_result({:ok, result}, _operation, _retry), do: result
-
-  defp kms_result({:error, reason}, operation, nil), do: raise_kms_error(operation, reason)
-
-  defp kms_result({:error, reason}, operation, retry) when is_transient(reason),
-    do: retry.() |> kms_result(operation, nil)
-
-  defp kms_result({:error, reason}, operation, _retry), do: raise_kms_error(operation, reason)
+  defp classify_result({:error, reason}) when is_transient(reason), do: {:transient, reason}
+  defp classify_result(result), do: result
 
   defp raise_kms_error(operation, reason),
     do: raise(Erebus.KMS.Error, operation: operation, reason: error_reason(reason))
@@ -137,6 +144,10 @@ defmodule Erebus.KMS.Google do
 
   defp connection_from_token({:ok, token}), do: GoogleApi.CloudKMS.V1.Connection.new(token.token)
 
-  defp connection_from_token({:error, reason}),
+  defp connection_from_token({:error, {:exit, _} = reason}),
     do: raise(Erebus.KMS.Error, operation: :fetch_token, reason: reason)
+
+  # Goth's error message embeds the token endpoint's response body, so keep it out.
+  defp connection_from_token({:error, _reason}),
+    do: raise(Erebus.KMS.Error, operation: :fetch_token, reason: :token_fetch_failed)
 end

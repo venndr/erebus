@@ -1,6 +1,6 @@
 defmodule Erebus.KMS.Error do
   @moduledoc """
-  Raised when a KMS backend call fails, after one retry for a transient error.
+  Raised when a KMS backend call fails, after retrying a transient error.
 
   `reason` is the backend's error, with HTTP failures reduced to
   `{:http_status, status}` so response bodies and headers stay out of the message.
