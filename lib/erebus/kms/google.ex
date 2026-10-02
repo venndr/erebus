@@ -1,7 +1,7 @@
 defmodule Erebus.KMS.Google do
   @behaviour Erebus.KMS
 
-  @request_timeout_ms 1_000
+  @default_request_timeout_ms 1_000
   @default_retry_budget_ms 2_000
 
   @moduledoc """
@@ -24,11 +24,12 @@ defmodule Erebus.KMS.Google do
     google_goth: MyApp.Goth
   ```
 
-  Each KMS request (and a Goth token fetch that misses the cache) times out after
-  #{@request_timeout_ms}ms, and a transient failure retries until `google_retry_budget_ms`
-  (default #{@default_retry_budget_ms}) has passed since the first attempt, so a hung KMS fails a
-  call within about #{@request_timeout_ms + @default_retry_budget_ms}ms. Background work that can
-  wait longer can pass a larger budget.
+  Each KMS request, and a Goth token fetch that misses its cache, times out after
+  `google_request_timeout_ms` (default #{@default_request_timeout_ms}). A transient failure retries
+  with backoff, but no attempt starts once `google_retry_budget_ms` (default
+  #{@default_retry_budget_ms}) has passed since the first, so the worst case is the budget plus one
+  token fetch and one request: #{@default_retry_budget_ms + 2 * @default_request_timeout_ms}ms with
+  the defaults. Background work that can wait longer can raise either option.
   """
 
   use Retry
@@ -134,13 +135,15 @@ defmodule Erebus.KMS.Google do
   # The deadline is fixed before the first attempt. expiry/2 would start its clock after the
   # first attempt and still make one more once it runs out.
   defp retry_delays(opts) do
-    deadline =
-      now_ms() + Keyword.get(opts, :google_retry_budget_ms, @default_retry_budget_ms)
+    deadline = now_ms() + option(opts, :google_retry_budget_ms, @default_retry_budget_ms)
 
     exponential_backoff(100) |> jitter() |> Stream.take_while(&(now_ms() + &1 < deadline))
   end
 
   defp now_ms, do: System.monotonic_time(:millisecond)
+
+  # An explicit nil, e.g. from an unset env var in config, means the default.
+  defp option(opts, key, default), do: Keyword.get(opts, key) || default
 
   defp classify_result({:error, reason}) when is_transient(reason), do: {:transient, reason}
   defp classify_result(result), do: result
@@ -151,29 +154,38 @@ defmodule Erebus.KMS.Google do
   defp error_reason(%{status: status}), do: {:http_status, status}
   defp error_reason(reason), do: reason
 
-  defp connection(opts),
-    do: opts |> Keyword.fetch!(:google_goth) |> fetch_token() |> connection_from_token()
+  defp connection(opts) do
+    timeout = option(opts, :google_request_timeout_ms, @default_request_timeout_ms)
+
+    opts
+    |> Keyword.fetch!(:google_goth)
+    |> fetch_token(timeout)
+    |> token!()
+    |> client(timeout)
+  end
 
   # Goth.fetch/2 exits, rather than returning an error, when its token refresh
   # call times out.
-  defp fetch_token(goth_name) do
-    Goth.fetch(goth_name, @request_timeout_ms)
+  defp fetch_token(goth_name, timeout) do
+    Goth.fetch(goth_name, timeout)
   catch
     :exit, reason -> {:error, {:exit, reason}}
   end
 
-  # Tesla.Middleware.Timeout bounds the whole request whichever adapter the app configures.
-  defp connection_from_token({:ok, token}),
-    do:
-      Tesla.client([
-        {Tesla.Middleware.Timeout, timeout: @request_timeout_ms},
-        {Tesla.Middleware.Headers, [{"authorization", "Bearer " <> token.token}]}
-      ])
+  defp token!({:ok, token}), do: token.token
 
-  defp connection_from_token({:error, {:exit, _} = reason}),
+  defp token!({:error, {:exit, _} = reason}),
     do: raise(Erebus.KMS.Error, operation: :fetch_token, reason: reason)
 
   # Goth's error message embeds the token endpoint's response body, so keep it out.
-  defp connection_from_token({:error, _reason}),
+  defp token!({:error, _reason}),
     do: raise(Erebus.KMS.Error, operation: :fetch_token, reason: :token_fetch_failed)
+
+  # Tesla.Middleware.Timeout bounds the caller's wait whichever adapter the app configures.
+  defp client(token, timeout),
+    do:
+      Tesla.client([
+        {Tesla.Middleware.Timeout, timeout: timeout},
+        {Tesla.Middleware.Headers, [{"authorization", "Bearer " <> token}]}
+      ])
 end

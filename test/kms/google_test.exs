@@ -2,6 +2,7 @@ defmodule Erebus.GoogleTest do
   use ExUnit.Case, async: false
 
   import Mock
+  import Retry.DelayStreams
 
   # A Tesla adapter standing in for the KMS HTTP API: each request takes the next scripted
   # reply, and the last one repeats. :ok echoes the ciphertext back as the plaintext.
@@ -137,34 +138,59 @@ defmodule Erebus.GoogleTest do
       assert kms_calls() == 1
     end
 
+    test "treats a nil budget or request timeout as the default" do
+      script_kms([{:error, :timeout}, :ok])
+      opts = google_opts(google_retry_budget_ms: nil, google_request_timeout_ms: nil)
+
+      assert "hellothere" == Erebus.KMS.Google.decrypt(encrypted("hellothere"), opts)
+      assert_called(Goth.fetch(:_, 1_000))
+    end
+
     test "retries until the caller's retry budget runs out, then raises" do
       script_kms([{:error, :timeout}])
-      opts = Keyword.put(google_opts(), :google_retry_budget_ms, 200)
+      opts = google_opts(google_retry_budget_ms: 500)
 
-      {elapsed_us, _} =
-        :timer.tc(fn ->
-          assert_raise Erebus.KMS.Error, "KMS decrypt failed: :timeout", fn ->
-            Erebus.KMS.Google.decrypt(encrypted("hellothere"), opts)
-          end
-        end)
+      elapsed_us = time_decrypt_timeout(opts)
 
       assert kms_calls() > 1
-      assert elapsed_us < 500_000
+      assert elapsed_us < 2_000_000
+    end
+
+    test "does not start a retry that would begin after the budget" do
+      # Seeded so jitter's first delay is 100ms: after the first 100ms attempt, a retry would
+      # start at about 200ms, past the 150ms budget.
+      :rand.seed(:exsss, {9, 9, 9})
+      assert exponential_backoff(100) |> jitter() |> Enum.at(0) == 100
+      :rand.seed(:exsss, {9, 9, 9})
+      script_kms([:hang])
+
+      opts =
+        google_opts(google_retry_budget_ms: 150, google_request_timeout_ms: 100)
+
+      time_decrypt_timeout(opts)
+
+      assert kms_calls() == 1
+    end
+
+    test "honours a caller's request timeout" do
+      script_kms([:hang])
+      opts = google_opts(google_retry_budget_ms: 0, google_request_timeout_ms: 100)
+
+      elapsed_us = time_decrypt_timeout(opts)
+
+      assert elapsed_us < 900_000
+      assert_called(Goth.fetch(:_, 100))
     end
 
     @tag timeout: 5_000
     test "gives up on a hung KMS request after one second" do
       script_kms([:hang])
-      opts = Keyword.put(google_opts(), :google_retry_budget_ms, 0)
+      opts = google_opts(google_retry_budget_ms: 0)
 
-      {elapsed_us, _} =
-        :timer.tc(fn ->
-          assert_raise Erebus.KMS.Error, "KMS decrypt failed: :timeout", fn ->
-            Erebus.KMS.Google.decrypt(encrypted("hellothere"), opts)
-          end
-        end)
+      elapsed_us = time_decrypt_timeout(opts)
 
-      assert elapsed_us in 1_000_000..1_500_000
+      assert elapsed_us in 1_000_000..2_000_000
+      assert_called(Goth.fetch(:_, 1_000))
     end
   end
 
@@ -198,16 +224,32 @@ defmodule Erebus.GoogleTest do
 
   defp kms_calls, do: Agent.get(ScriptedKMS, &elem(&1, 0))
 
+  # Asserts decrypt raises the KMS timeout error and returns how long it took, in µs.
+  defp time_decrypt_timeout(opts) do
+    {elapsed_us, _} =
+      :timer.tc(fn ->
+        assert_raise Erebus.KMS.Error, "KMS decrypt failed: :timeout", fn ->
+          Erebus.KMS.Google.decrypt(encrypted("hellothere"), opts)
+        end
+      end)
+
+    elapsed_us
+  end
+
   defp encrypted(dek),
     do: %Erebus.EncryptedData{encrypted_dek: Base.encode64(dek), handle: "x", version: "y"}
 
-  defp google_opts,
-    do: [
-      google_project: "someproject",
-      google_region: "someregion",
-      google_keyring: "somekeyring",
-      google_goth: :not_existing
-    ]
+  defp google_opts(overrides \\ []),
+    do:
+      Keyword.merge(
+        [
+          google_project: "someproject",
+          google_region: "someregion",
+          google_keyring: "somekeyring",
+          google_goth: :not_existing
+        ],
+        overrides
+      )
 
   defp read_fixture(path_segments),
     do:
