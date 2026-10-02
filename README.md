@@ -140,6 +140,11 @@ end
       google_keyring: "some_keyring",
       google_goth: MyApp.Goth
     ```
+4. Optionally, tune how long a call may wait on KMS:
+    - `google_request_timeout_ms` (default `1_000`): timeout for each KMS request, and for a Goth token fetch that misses its cache.
+    - `google_retry_budget_ms` (default `2_000`): a timeout, transport error, 429 or 5xx is retried with backoff, but no attempt starts once this long has passed since the first. The worst case is the budget plus one token fetch and one request, about 4s with the defaults.
+
+    The defaults suit a synchronous request. Background work that can wait longer can pass larger values in the opts for that call.
 
 Please note that if you're using Google KMS, your key must have access to the following roles:
 

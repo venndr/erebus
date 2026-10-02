@@ -34,6 +34,7 @@ defmodule Erebus.MixProject do
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
       {:mock, "~> 0.3.0", only: :test},
       {:jason, "~> 1.0"},
+      {:retry, "~> 0.16"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
