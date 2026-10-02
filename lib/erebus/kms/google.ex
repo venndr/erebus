@@ -1,6 +1,9 @@
 defmodule Erebus.KMS.Google do
   @behaviour Erebus.KMS
 
+  @request_timeout_ms 1_000
+  @default_retry_budget_ms 2_000
+
   @moduledoc """
   This KMS backend uses Google KMS to encrypt/decrypt DEKs. It requires a 2048 bit RSA key with OAEP
   Padding and SHA256 Digest.
@@ -20,6 +23,12 @@ defmodule Erebus.KMS.Google do
     google_keyring: "some_keyring",
     google_goth: MyApp.Goth
   ```
+
+  Each KMS request (and a Goth token fetch that misses the cache) times out after
+  #{@request_timeout_ms}ms, and a transient failure retries until `google_retry_budget_ms`
+  (default #{@default_retry_budget_ms}) has passed since the first attempt, so a hung KMS fails a
+  call within about #{@request_timeout_ms + @default_retry_budget_ms}ms. Background work that can
+  wait longer can pass a larger budget.
   """
 
   use Retry
@@ -41,7 +50,7 @@ defmodule Erebus.KMS.Google do
     google_keyring = Keyword.fetch!(opts, :google_keyring)
 
     %{plaintext: dek} =
-      call_kms(:decrypt, fn ->
+      call_kms(:decrypt, opts, fn ->
         CloudKMSApi.cloudkms_projects_locations_key_rings_crypto_keys_crypto_key_versions_asymmetric_decrypt(
           connection(opts),
           google_project,
@@ -83,7 +92,7 @@ defmodule Erebus.KMS.Google do
     google_keyring = Keyword.fetch!(opts, :google_keyring)
 
     %{pem: public_key} =
-      call_kms(:get_public_key, fn ->
+      call_kms(:get_public_key, opts, fn ->
         CloudKMSApi.cloudkms_projects_locations_key_rings_crypto_keys_crypto_key_versions_get_public_key(
           connection(opts),
           google_project,
@@ -101,7 +110,7 @@ defmodule Erebus.KMS.Google do
   end
 
   # A timeout, transport error, 429 or 5xx retries with jittered backoff: both KMS calls
-  # are idempotent. Anything else, or exhausting the retries, raises Erebus.KMS.Error.
+  # are idempotent. Anything else, or running out of budget, raises Erebus.KMS.Error.
   defguardp is_transient(reason)
             when is_atom(reason) or
                    (is_tuple(reason) and tuple_size(reason) == 2 and elem(reason, 0) == :closed) or
@@ -109,8 +118,8 @@ defmodule Erebus.KMS.Google do
                       (:erlang.map_get(:status, reason) == 429 or
                          :erlang.map_get(:status, reason) >= 500))
 
-  defp call_kms(operation, request) do
-    retry with: exponential_backoff(100) |> jitter() |> Stream.take(5),
+  defp call_kms(operation, opts, request) do
+    retry with: retry_delays(opts),
           atoms: [:transient],
           rescue_only: [] do
       request.() |> classify_result()
@@ -121,6 +130,17 @@ defmodule Erebus.KMS.Google do
       {:transient, reason} -> raise_kms_error(operation, reason)
     end
   end
+
+  # The deadline is fixed before the first attempt. expiry/2 would start its clock after the
+  # first attempt and still make one more once it runs out.
+  defp retry_delays(opts) do
+    deadline =
+      now_ms() + Keyword.get(opts, :google_retry_budget_ms, @default_retry_budget_ms)
+
+    exponential_backoff(100) |> jitter() |> Stream.take_while(&(now_ms() + &1 < deadline))
+  end
+
+  defp now_ms, do: System.monotonic_time(:millisecond)
 
   defp classify_result({:error, reason}) when is_transient(reason), do: {:transient, reason}
   defp classify_result(result), do: result
@@ -134,15 +154,21 @@ defmodule Erebus.KMS.Google do
   defp connection(opts),
     do: opts |> Keyword.fetch!(:google_goth) |> fetch_token() |> connection_from_token()
 
-  # Goth.fetch/1 exits, rather than returning an error, when its token refresh
+  # Goth.fetch/2 exits, rather than returning an error, when its token refresh
   # call times out.
   defp fetch_token(goth_name) do
-    Goth.fetch(goth_name)
+    Goth.fetch(goth_name, @request_timeout_ms)
   catch
     :exit, reason -> {:error, {:exit, reason}}
   end
 
-  defp connection_from_token({:ok, token}), do: GoogleApi.CloudKMS.V1.Connection.new(token.token)
+  # Tesla.Middleware.Timeout bounds the whole request whichever adapter the app configures.
+  defp connection_from_token({:ok, token}),
+    do:
+      Tesla.client([
+        {Tesla.Middleware.Timeout, timeout: @request_timeout_ms},
+        {Tesla.Middleware.Headers, [{"authorization", "Bearer " <> token.token}]}
+      ])
 
   defp connection_from_token({:error, {:exit, _} = reason}),
     do: raise(Erebus.KMS.Error, operation: :fetch_token, reason: reason)
